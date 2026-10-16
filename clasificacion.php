@@ -23,7 +23,7 @@
         }
 
         .carousel-slide {
-            width: 280px !important; /* Tamaño responsivo para la tarjeta del centro */
+            width: 280px !important; /* Tamaño responsivo para la tarjeta del centro prueba de cambio */
             height: 340px;
             background: #ffffff;
             border-radius: 24px;
