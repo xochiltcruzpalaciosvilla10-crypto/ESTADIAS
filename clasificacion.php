@@ -48,7 +48,7 @@
 
         /* 🌟 LAS FLECHAS <> (Diseño Pro) */
         .carousel-btn {
-            position: absolute;/*posisionamiento absoluto para que maueladj 
+            position: absolute;
             top: 50%;
             transform: translateY(-50%);
             background: rgba(255, 255, 255, 0.85);
