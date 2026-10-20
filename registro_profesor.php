@@ -15,38 +15,40 @@ try {
     );
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $nombre = trim($_POST['nombre'] ?? '');
-        $apellido = trim($_POST['apellido'] ?? '');
-        $telefono = trim($_POST['telefono'] ?? '');
+        $usuario = trim($_POST['usuario'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        if ($nombre === '' || $apellido === '' || $telefono === '' || $password === '') {
-            $error = 'Completa todos los campos para crear tu cuenta.';
+        if ($usuario === '' || $password === '') {
+            $error = 'Escribe un usuario y una contraseña para crear tu cuenta.';
         } else {
-            $registro = $pdo->prepare(
-                'INSERT INTO datos (nombre, apellido, telefono, contrasena)
-                 VALUES (:nombre, :apellido, :telefono, :contrasena)'
-            );
-            $registro->execute([
-                ':nombre' => $nombre,
-                ':apellido' => $apellido,
-                ':telefono' => $telefono,
-                ':contrasena' => password_hash($password, PASSWORD_DEFAULT),
-            ]);
+            $consulta = $pdo->prepare('SELECT id_profesor FROM datos WHERE usuario = :usuario LIMIT 1');
+            $consulta->execute([':usuario' => $usuario]);
 
-            session_regenerate_id(true);
-            $_SESSION['profesor'] = [
-                'id' => $pdo->lastInsertId(),
-                'nombre' => $nombre,
-                'apellido' => $apellido,
-                'telefono' => $telefono,
-            ];
-            header('Location: clasificacion.php');
-            exit;
+            if ($consulta->fetch()) {
+                $error = '';
+            } else {
+                $registro = $pdo->prepare(
+                    'INSERT INTO datos (usuario, contrasena)
+                     VALUES (:usuario, :contrasena)'
+                );
+                $registro->execute([
+                    ':usuario' => $usuario,
+                    ':contrasena' => password_hash($password, PASSWORD_DEFAULT),
+                ]);
+
+                session_regenerate_id(true);
+                $_SESSION['profesor'] = [
+                    'id' => $pdo->lastInsertId(),
+                    'usuario' => $usuario,
+                ];
+                header('Location: clasificacion.php');
+                exit;
+            }
         }
     }
 } catch (PDOException $e) {
-
+    error_log('Error de conexión o registro de profesor: ' . $e->getMessage());
+    $error = '';
 }
 ?>
 <!DOCTYPE html>
@@ -245,16 +247,8 @@ button:active {
             <p>Regístrate</p>
             <form method="POST">
 <div class="input-group">
-    <label for="nombre">Nombre</label>
-    <input id="nombre" name="nombre" type="text" maxlength="50" autocomplete="given-name" required>
-</div>
-<div class="input-group">
-    <label for="apellido">Apellido</label>
-    <input id="apellido" name="apellido" type="text" maxlength="50" autocomplete="family-name" required>
-</div>
-<div class="input-group">
-    <label for="telefono">Número de teléfono</label>
-    <input id="telefono" name="telefono" type="tel" maxlength="20" autocomplete="tel" required>
+    <label for="usuario">Nombre de usuario</label>
+    <input id="usuario" name="usuario" type="text" maxlength="50" autocomplete="username" required>
 </div>
 <div class="input-group">
     <label for="password">Contraseña</label>
