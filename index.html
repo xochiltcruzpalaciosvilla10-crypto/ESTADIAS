@@ -32,19 +32,21 @@
             <p class="subtitle">Use sus datos para registrarse</p>
 
             <!-- Formulario -->
-            <form>
-                <div class="input-group">
-                    <i class="fa-regular fa-user"></i>
-                    <input type="text" name="usuario" placeholder="Usuario" required>
-                </div>
+            <form action="registro.php" method="POST">
+    <div class="input-group">
+        <i class="fa-regular fa-user"></i>
+        <!-- Cambiado placeholder a "Usuario" -->
+        <input type="text" name="nombre" placeholder="Usuario" required>
+    </div>
 
-                <div class="input-group">
-                    <i class="fa-solid fa-lock"></i>
-                    <input type="password" name="password" placeholder="Password" required>
-                </div>
+    <div class="input-group">
+        <i class="fa-solid fa-lock"></i>
+        <!-- Cambiado placeholder a "Contraseña" -->
+        <input type="password" name="password" placeholder="Contraseña" required>
+    </div>
 
-                <button type="submit" class="btn-register">REGISTRARSE</button>
-            </form>
+    <button type="submit" class="btn-register">REGISTRARSE</button>
+</form>
         </div>
     </div>
 
