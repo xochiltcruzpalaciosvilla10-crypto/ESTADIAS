@@ -54,7 +54,7 @@ try {
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login</title>
+    <title>BakeStock</title>
     <style>
         :root {
             --bg-1: #fff4e2;
@@ -333,11 +333,11 @@ try {
 <body>
     <div class="login-wrap">
         <div class="left">
-            <h1 class="title">Login</h1>
+            <h1 class="title">Index</h1>
 
             <form method="POST" action="index.php" autocomplete="off">
             <div class="campo">
-                <label for="usuario">Nombre de usuario</label>
+                <label for="usuario">usuario</label>
                 <div class="input-box">
                     <span class="icon">
                         <svg viewBox="0 0 24 24">
