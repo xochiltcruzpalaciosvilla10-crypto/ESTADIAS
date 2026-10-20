@@ -1,268 +1,151 @@
 * {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
-}
-
-html,
-body {
-    width: 100%;
-    min-height: 100%;
-    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
-    background: #fff8ed;
-    color: #542719;
-    font-family: "Trebuchet MS", Arial, sans-serif;
+    background-color: #F5F2EB; /* Beige / Crema */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
 }
 
-.site-brand {
-    padding: 18px 12px 14px;
+/* Contenedor Principal */
+.container {
+    background-color: #FFFFFF; /* Blanco */
+    width: 750px;
+    height: 430px;
+    display: flex;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Panel Izquierdo (Marrón/Chocolate con curva) */
+.panel-left {
+    background-color: #3D2314; /* Marrón / Chocolate */
+    color: #FFFFFF; /* Blanco */
+    width: 45%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
     text-align: center;
-    background: #fff8ed;
+    border-top-right-radius: 150px;
+    border-bottom-right-radius: 150px;
 }
 
-.site-brand__name {
-    margin: 0;
-    color: #4b3621;
-    font-family: "Clarendon Blk BT", "Clarendon BT", Georgia, serif;
-    font-weight: 900;
+.panel-left h1 {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
 }
 
-.site-brand__name svg {
-    display: block;
-    width: min(100%, 680px);
-    height: auto;
-    margin: 0 auto;
-    overflow: visible;
-}
-
-.site-brand__name text {
-    fill: currentColor;
-    font-family: "Clarendon Blk BT", "Clarendon BT", Georgia, serif;
-    font-size: 75px;
-    font-weight: 900;
-}
-
-.top-nav {
-    position: relative;
-    z-index: 5;
-    display: flex;
-    min-height: 66px;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(12px, 4vw, 52px);
-    padding: 10px 20px;
-    border-bottom: 4px solid #c89b5c;
-    background: #f2d6a2;
-    box-shadow: 0 4px 14px rgb(75 35 18 / 20%);
-}
-
-.top-nav__link {
-    padding: 10px 14px;
-    border-radius: 999px;
-    color: #542719;
-    background: #f2d6a2;
+.panel-left p {
     font-size: 0.9rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-decoration: none;
-    text-transform: uppercase;
-    box-shadow: 0 3px 8px rgb(48 24 37 / 22%);
-    transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
+    line-height: 1.5;
+    opacity: 0.9;
 }
 
-.top-nav__link:hover,
-.top-nav__link:focus-visible {
-    transform: translateY(-1px);
-    color: #542719;
-    background: #f2d6a2;
-}
-
-.top-nav__link:focus-visible {
-    outline: 3px solid #fff;
-    outline-offset: 3px;
-}
-
-.carousel {
-    position: relative;
-    width: min(1100px, calc(100% - 40px));
-    height: clamp(380px, 58vh, 620px);
-    margin: 18px auto 0;
-    overflow: hidden;
-    isolation: isolate;
-    border-radius: 20px;
-    background: transparent;
-    box-shadow: 0 18px 36px rgb(75 35 18 / 15%);
-}
-
-.carousel-track,
-.carousel-slide {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-}
-
-.carousel-track {
-    overflow: hidden;
-    background: transparent;
-}
-
-.carousel-slide {
-    display: none;
-    background: transparent;
-}
-
-.carousel-slide.is-active {
-    display: block;
-}
-
-.carousel-slide img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    object-position: center;
-    background: transparent;
-}
-
-.carousel-btn {
-    position: absolute;
-    top: 50%;
-    z-index: 2;
+/* Panel Derecho (Formulario) */
+.panel-right {
+    width: 55%;
     display: flex;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    border: 0;
-    border-radius: 50%;
-    background: rgb(84 39 25 / 68%);
-    color: #fff8ed;
-    font-size: 1.7rem;
-    cursor: pointer;
-    transform: translateY(-50%);
-    transition: background-color 180ms ease, transform 180ms ease;
+    padding: 40px;
 }
 
-.carousel-btn:hover,
-.carousel-btn:focus-visible {
-    background: rgb(84 39 25 / 90%);
-    transform: translateY(-50%) scale(1.05);
+.panel-right h2 {
+    color: #1A1A1A; /* Negro / Gris oscuro */
+    font-size: 2.2rem;
+    margin-bottom: 15px;
 }
 
-.carousel-btn--prev {
-    left: 18px;
+/* Iconos de redes sociales */
+.social-icons {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
-.carousel-btn--next {
-    right: 18px;
-}
-
-.carousel-dots {
-    position: absolute;
-    right: 0;
-    bottom: 18px;
-    left: 0;
-    z-index: 2;
+.social-icons a {
+    color: #4A5D4E; /* Verde Olivo */
+    font-size: 1.2rem;
+    border: 1px solid #E0E0E0;
+    width: 38px;
+    height: 38px;
     display: flex;
     justify-content: center;
-    gap: 10px;
-    padding: 0 18px;
+    align-items: center;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.3s ease;
 }
 
-.carousel-dot {
-    width: 12px;
-    height: 12px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: rgb(255 255 255 / 70%);
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgb(32 20 12 / 18%);
-    transition: transform 160ms ease, background-color 160ms ease;
+.social-icons a:hover {
+    background-color: #4A5D4E;
+    color: #FFFFFF;
 }
 
-.carousel-dot.is-active {
-    background: #d78a4f;
-    transform: scale(1.12);
+.subtitle {
+    color: #757575;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
 }
 
-.gallery-bottom {
-    padding: clamp(40px, 7vw, 76px) clamp(16px, 5vw, 64px);
-    background: linear-gradient(180deg, #fff8ed, #f8e6c9);
+/* Formulario e Inputs */
+form {
+    width: 85%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.gallery-bottom__grid {
-    display: grid;
-    width: min(1120px, 100%);
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: clamp(12px, 2vw, 24px);
-    margin: 0 auto;
-}
-
-.gallery-card {
-    overflow: hidden;
-    margin: 0;
-    border: 1px solid rgb(122 63 29 / 12%);
-    border-radius: 18px;
-    background: #fffdf9;
-    box-shadow: 0 10px 26px rgb(75 35 18 / 12%);
-}
-
-.gallery-card img {
-    display: block;
+.input-group {
+    position: relative;
     width: 100%;
-    height: clamp(150px, 20vw, 230px);
-    object-fit: contain;
-    background: #fffdf9;
 }
 
-.visually-hidden {
+.input-group i {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    clip-path: inset(50%);
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #8C8C8C; /* Tonos suaves */
+    font-size: 0.95rem;
 }
 
-@media (max-width: 600px) {
-    .top-nav {
-        min-height: 58px;
-        gap: 4px;
-        padding: 8px 6px;
-    }
-
-    .top-nav__link {
-        padding: 10px 8px;
-        font-size: 0.68rem;
-        letter-spacing: 0.04em;
-    }
-
-    .carousel {
-        height: 54vh;
-        min-height: 360px;
-    }
-
-    .gallery-bottom__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .gallery-card img {
-        height: clamp(140px, 38vw, 210px);
-    }
-
+.input-group input {
+    width: 100%;
+    padding: 12px 12px 12px 42px;
+    background-color: #F0EDE6; /* Crema suave para inputs */
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #1A1A1A;
+    outline: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        scroll-behavior: auto !important;
-        transition-duration: 0.01ms !important;
-    }
+/* Botón de Registro (Terracota) */
+.btn-register {
+    background-color: #C85A32; /* Terracota / Ocre */
+    color: #FFFFFF;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 15px;
+    letter-spacing: 1px;
+    transition: background-color 0.3s ease;
+}
+
+.btn-register:hover {
+    background-color: #A64422; /* Terracota más oscuro al pasar el mouse */
 }

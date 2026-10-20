@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrarse</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Iconos de FontAwesome para los campos y redes sociales -->
+    <link rel="stylesheet" href="https://cloudflare.com">
+</head>
+<body>
+
+    <div class="container">
+        <!-- Panel Izquierdo (Mensaje de Bienvenida) -->
+        <div class="panel-left">
+            <h1>¡Hola!</h1>
+            <p>Regístrese con sus datos personales para usar todas las funciones del sitio</p>
+        </div>
+
+        <!-- Panel Derecho (Formulario de Registro sin Email ni botón Iniciar Sesión) -->
+        <div class="panel-right">
+            <h2>Registrarse</h2>
+            
+            <!-- Iconos de Redes Sociales -->
+            <div class="social-icons">
+                <a href="#"><i class="fa-brands fa-twitch"></i></a>
+                <a href="#"><i class="fa-brands fa-twitter"></i></a>
+                <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                <a href="#"><i class="fa-brands fa-tiktok"></i></a>
+            </div>
+
+            <p class="subtitle">Use sus datos para registrarse</p>
+
+            <!-- Formulario -->
+            <form>
+                <div class="input-group">
+                    <i class="fa-regular fa-user"></i>
+                    <input type="text" name="usuario" placeholder="Usuario" required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+
+                <button type="submit" class="btn-register">REGISTRARSE</button>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
