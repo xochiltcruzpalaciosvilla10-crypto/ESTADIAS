@@ -1,10 +1,3 @@
-session_start();
-
-if (!isset($_SESSION['profesor'])) {
-    header('Location: index.php');
-    exit;
-}
-?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
