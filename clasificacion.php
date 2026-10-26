@@ -216,8 +216,8 @@
         <div class="nav-logo">🍞</div>
         <ul class="nav-links">
             <li><a href="index.html">Inicio</a></li>
-            <li><a href="Inventario.php?vista=panel&accion_panel=ver_tablas&seccion=Maquinaria" class="activo">Maquinaria</a></li>
-            <li><a href="Inventario.php?vista=panel&accion_panel=ver_tablas&seccion=Utensilios">Utensilios</a></li>
+            <li><a href="carrucel2.php" class="activo">Maquinaria</a></li>
+            <li><a href="carrucel2.php">Utensilios</a></li>
         </ul>
     </nav>
 

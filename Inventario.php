@@ -541,7 +541,7 @@ $vista = $_GET['vista'] ?? 'bienvenida';
                style="background:linear-gradient(90deg,#3B1F0E,#6B3A2A); color:#F5F0E8; padding:12px 24px; border-radius:20px; text-decoration:none; font-weight:700; letter-spacing:1px; border:2px solid #C9A87C; transition:all 0.3s ease;">
                ⚙️ Maquinaria
             </a>
-            <a href="?vista=panel&accion_panel=ver_tablas&seccion=Utensilios"
+            <a href="carrucel2.php"
                style="background:linear-gradient(90deg,#3B1F0E,#6B3A2A); color:#F5F0E8; padding:12px 24px; border-radius:20px; text-decoration:none; font-weight:700; letter-spacing:1px; border:2px solid #C9A87C; transition:all 0.3s ease;">
                 Utensilios
             </a>
