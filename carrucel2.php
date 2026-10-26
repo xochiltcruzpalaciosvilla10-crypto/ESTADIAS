@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SLIDER</title>
-</head>
-<body>
+    <title>Carrusel de panadería</title>
+    <style>
+        html,
+        body {
+            min-height: 100%;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            overflow: hidden;
+            background: #1B120D;
+        }
 
 /* CARRUSEL ELEGANTE: CAFÉ OSCURO Y DORADO */
 
@@ -275,6 +285,10 @@
 .carrusel-controles {
     z-index: 4;
 }
+</style>
+
+</head>
+<body>
 
 
 <!-- Carrusel de fotografías -->
@@ -282,43 +296,43 @@
 
     <img
         class="slide-imagen activo"
-        src="pan1.jfif"
+        src="img/pan1.jfif"
         alt="Panadería, imagen 1"
     >
 
     <img
         class="slide-imagen"
-        src="pan2.jfif"
+        src="img/pan2.jfif"
         alt="Panadería, imagen 2"
     >
 
     <img
         class="slide-imagen"
-        src="pan3.jfif"
+        src="img/pan3.jfif"
         alt="Panadería, imagen 3"
     >
 
     <img
         class="slide-imagen"
-        src="pan4.jfif"
+        src="img/pan4.jfif"
         alt="Panadería, imagen 4"
     >
 
     <img
         class="slide-imagen"
-        src="pan5.jfif"
+        src="img/pan5.jfif"
         alt="Panadería, imagen 5"
     >
 
     <img
         class="slide-imagen"
-        src="pan6.jfif"
+        src="img/pan6.jfif"
         alt="Panadería, imagen 6"
     >
 
     <img
         class="slide-imagen"
-        src="pan7.jfif"
+        src="img/pan7.jfif"
         alt="Panadería, imagen 7"
     >
 
@@ -407,6 +421,44 @@
 
     </div>
 </div>
+
+<script>
+    const slides = Array.from(document.querySelectorAll('.slide-imagen'));
+    const indicators = Array.from(
+        document.querySelectorAll('.carrusel-indicador')
+    );
+    const previousButton = document.querySelector('.carrusel-flecha.anterior');
+    const nextButton = document.querySelector('.carrusel-flecha.siguiente');
+    let activeSlide = 0;
+
+    function showSlide(index) {
+        activeSlide = (index + slides.length) % slides.length;
+
+        slides.forEach((slide, slideIndex) => {
+            slide.classList.toggle('activo', slideIndex === activeSlide);
+        });
+
+        indicators.forEach((indicator, slideIndex) => {
+            const isActive = slideIndex === activeSlide;
+            indicator.classList.toggle('activo', isActive);
+            indicator.setAttribute('aria-pressed', String(isActive));
+        });
+    }
+
+    previousButton.addEventListener('click', () => {
+        showSlide(activeSlide - 1);
+    });
+
+    nextButton.addEventListener('click', () => {
+        showSlide(activeSlide + 1);
+    });
+
+    indicators.forEach((indicator) => {
+        indicator.addEventListener('click', () => {
+            showSlide(Number(indicator.dataset.slide));
+        });
+    });
+</script>
 
 </body>
 </html>
