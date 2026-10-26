@@ -3,53 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Index</title>
+    <title>BAKESTOCK | Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    <!-- Iconos de FontAwesome para los campos y redes sociales -->
-    <link rel="stylesheet" href="https://cloudflare.com">
 </head>
 <body>
 
     <div class="container">
-        <!-- Panel Izquierdo (Mensaje de Bienvenida) -->
         <div class="panel-left">
+            <div class="left-badge">Panadería</div>
             <h1>¡Hola, Bienvenid@!</h1>
-            <p>"Inventario al dia: el secreto de un buen pan y un negocio sano."</p>
+            <p>"Inventario al día: el secreto de un buen pan y un negocio sano."</p>
+            <div class="left-pattern"></div>
         </div>
 
-        <!-- Panel Derecho (Formulario de Registro sin Email ni botón Iniciar Sesión) -->
         <div class="panel-right">
-            <h1>BAKESTOCK</h1>
+            <div class="brand-wrap">
+                <span class="brand-mark">B</span>
+                <h1>BAKESTOCK</h1>
+            </div>
 
-            <p class="subtitle">registrarse</p>
+            <p class="subtitle">Iniciar sesión</p>
 
-            <!-- Formulario -->
-<form onsubmit="return validarLogin(event)" autocomplete="off">
-    <!-- Grupo de Usuario -->
-    <div class="input-group-vertical">
-        <label for="nombre">Usuario</label>
-        <div class="input-field">
-            <i class="fa-regular fa-user"></i>
-            <input type="text" id="nombre" name="nombre" autocomplete="off" required>
+            <form onsubmit="return validarLogin(event)" autocomplete="off">
+                <div class="input-group-vertical">
+                    <label for="nombre">Usuario</label>
+                    <div class="input-field">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="nombre" name="nombre" autocomplete="off" required>
+                    </div>
+                </div>
+
+                <div class="input-group-vertical">
+                    <label for="password">Contraseña</label>
+                    <div class="input-field">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="password" name="password" autocomplete="new-password" required>
+                    </div>
+                </div>
+
+                <p id="error-msg" aria-live="polite">
+                    ❌ Usuario o contraseña incorrectos
+                </p>
+
+                <button type="submit" class="btn-register">LOGIN</button>
+            </form>
         </div>
     </div>
-
-    <!-- Grupo de Contraseña -->
-    <div class="input-group-vertical">
-        <label for="password">Contraseña</label>
-        <div class="input-field">
-            <i class="fa-solid fa-lock"></i>
-            <input type="password" id="password" name="password" autocomplete="new-password" required>
-        </div>
-    </div>
-
-    <!-- Mensaje de error -->
-    <p id="error-msg" style="color:#C85A32; font-size:0.85rem; display:none; margin-top:-8px;">
-        ❌ Usuario o contraseña incorrectos
-    </p>
-
-    <button type="submit" class="btn-register">LOGIN</button>
-</form>
 
 <script>
     function validarLogin(e) {
