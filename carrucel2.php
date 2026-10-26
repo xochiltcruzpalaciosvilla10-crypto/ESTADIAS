@@ -319,6 +319,28 @@
     outline-offset: 4px;
 }
 
+.btn-musica {
+    display: block;
+    min-height: 42px;
+    margin: 14px auto 0;
+    padding: 0 16px;
+    border: 1px solid rgba(255, 248, 232, 0.75);
+    border-radius: 8px;
+    background: rgba(36, 21, 15, 0.82);
+    color: #FFF8E8;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.btn-musica:hover {
+    background: #6B3A2A;
+}
+
+.btn-musica:focus-visible {
+    outline: 3px solid #FFF8E8;
+    outline-offset: 4px;
+}
+
 @media (max-width: 600px) {
     .bienvenida-contenido h1 {
         font-size: 2.25rem;
@@ -403,6 +425,10 @@
     <a class="btn-entrar" href="Inventario.php?vista=panel">
         Entrar al sistema
     </a>
+    <audio id="musicaPanaderia" src="musicaPanaderia.mp3" loop preload="auto" autoplay></audio>
+    <button class="btn-musica" id="botonMusica" type="button" aria-label="Reproducir música" aria-pressed="false">
+        ♫ Reproducir música
+    </button>
 </main>
 
 <!-- Flechas e indicadores -->
@@ -522,6 +548,36 @@
             showSlide(Number(indicator.dataset.slide));
         });
     });
+
+    const music = document.getElementById('musicaPanaderia');
+    const musicButton = document.getElementById('botonMusica');
+
+    async function playMusic() {
+        try {
+            await music.play();
+            musicButton.textContent = '♫';
+            musicButton.setAttribute('aria-label', 'Pausar música');
+            musicButton.setAttribute('aria-pressed', 'true');
+        } catch (error) {
+            musicButton.textContent = '♫ Reproducir música';
+            musicButton.setAttribute('aria-label', 'Reproducir música');
+            musicButton.setAttribute('aria-pressed', 'false');
+        }
+    }
+
+    musicButton.addEventListener('click', () => {
+        if (music.paused) {
+            playMusic();
+            return;
+        }
+
+        music.pause();
+        musicButton.textContent = '♫ Reproducir música';
+        musicButton.setAttribute('aria-label', 'Reproducir música');
+        musicButton.setAttribute('aria-pressed', 'false');
+    });
+
+    playMusic();
 </script>
 
 </body>
