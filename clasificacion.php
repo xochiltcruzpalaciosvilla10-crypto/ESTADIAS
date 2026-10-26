@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    /*cambio */
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>panel</title>
@@ -217,7 +217,7 @@
         <div class="nav-logo">🍞</div>
         <ul class="nav-links">
             <li><a href="index.html">Inicio</a></li>
-            <li><a href="Inventario.php?vista=panel&accion_panel=ver_tablas&seccion=Maquinaria" class="activo">Maquinaria</a></li>
+            <li><a href="carrucel2.php" class="activo">Maquinaria</a></li>
             <li><a href="Inventario.php?vista=panel&accion_panel=ver_tablas&seccion=Utensilios">Utensilios</a></li>
         </ul>
     </nav>
