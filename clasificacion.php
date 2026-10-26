@@ -18,7 +18,7 @@
             min-height: 100vh;
         }
 
-        /* ===== NAVBAR ===== */
+        /* ===== NAVBAR test ===== */
         .navbar {
             width: 100%;
             background: linear-gradient(90deg, #3D2314, #8B4513, #C85A32);
