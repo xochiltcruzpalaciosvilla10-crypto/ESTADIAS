@@ -6,7 +6,7 @@
 }
 
 body {
-    background-color: #F5F2EB; /* Beige / Crema */
+    background-color: #F5F0E8; /* Ivory */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -15,7 +15,7 @@ body {
 
 /* Contenedor Principal */
 .container {
-    background-color: #FFFFFF; /* Blanco */
+    background-color: #FFFFFF;
     width: 750px;
     height: 430px;
     display: flex;
@@ -24,10 +24,10 @@ body {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
-/* Panel Izquierdo (Marrón/Chocolate con curva) */
+/* Panel Izquierdo (Mocha/Brown) */
 .panel-left {
-    background-color: #3D2314; /* Marrón / Chocolate */
-    color: #FFFFFF; /* Blanco */
+    background: linear-gradient(160deg, #3B1F0E, #6B3A2A); /* Mocha → Brown */
+    color: #F5F0E8; /* Ivory */
     width: 45%;
     display: flex;
     flex-direction: column;
@@ -50,7 +50,7 @@ body {
     opacity: 0.9;
 }
 
-/* Panel Derecho (Formulario) */
+/* Panel Derecho */
 .panel-right {
     width: 55%;
     display: flex;
@@ -61,7 +61,13 @@ body {
 }
 
 .panel-right h2 {
-    color: #1A1A1A; /* Negro / Gris oscuro */
+    color: #3B1F0E; /* Mocha */
+    font-size: 2.2rem;
+    margin-bottom: 15px;
+}
+
+.panel-right h1 {
+    color: #3B1F0E;
     font-size: 2.2rem;
     margin-bottom: 15px;
 }
@@ -74,9 +80,9 @@ body {
 }
 
 .social-icons a {
-    color: #4A5D4E; /* Verde Olivo */
+    color: #6B3A2A; /* Brown */
     font-size: 1.2rem;
-    border: 1px solid #E0E0E0;
+    border: 1px solid #C9A87C; /* Latte */
     width: 38px;
     height: 38px;
     display: flex;
@@ -88,12 +94,12 @@ body {
 }
 
 .social-icons a:hover {
-    background-color: #4A5D4E;
-    color: #FFFFFF;
+    background-color: #6B3A2A;
+    color: #F5F0E8;
 }
 
 .subtitle {
-    color: #757575;
+    color: #A0522D; /* Latte */
     font-size: 0.85rem;
     margin-bottom: 20px;
 }
@@ -106,35 +112,60 @@ form {
     gap: 12px;
 }
 
-.input-group {
+.input-group-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 18px;
+}
+
+.input-group-vertical label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #3B1F0E; /* Mocha */
+    text-align: left;
+    letter-spacing: 0.5px;
+}
+
+.input-field {
     position: relative;
     width: 100%;
 }
 
-.input-group i {
+.input-field i {
     position: absolute;
-    left: 15px;
+    left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    color: #8C8C8C; /* Tonos suaves */
-    font-size: 0.95rem;
+    color: #A0522D; /* Latte */
+    font-size: 1.1rem;
+    z-index: 2;
 }
 
-.input-group input {
+.input-field input {
     width: 100%;
-    padding: 12px 12px 12px 42px;
-    background-color: #F0EDE6; /* Crema suave para inputs */
-    border: none;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    color: #1A1A1A;
+    padding: 16px 16px 16px 48px;
+    background: linear-gradient(135deg, #F5F0E8 0%, #C9A87C22 100%); /* Ivory → Cream suave */
+    border: 2px solid #C9A87C; /* Cream */
+    border-radius: 10px;
+    font-size: 1rem;
+    color: #3B1F0E;
     outline: none;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
-/* Botón de Registro (Terracota) */
+.input-field input:focus {
+    border-color: #6B3A2A; /* Brown */
+    box-shadow: 0 0 8px rgba(107, 58, 42, 0.25);
+    background: #FFFFFF;
+}
+
+/* Botón LOGIN */
 .btn-register {
-    background-color: #C85A32; /* Terracota / Ocre */
-    color: #FFFFFF;
+    background-color: #6B3A2A; /* Brown */
+    color: #F5F0E8; /* Ivory */
     border: none;
     padding: 12px;
     border-radius: 6px;
@@ -147,5 +178,5 @@ form {
 }
 
 .btn-register:hover {
-    background-color: #A64422; /* Terracota más oscuro al pasar el mouse */
+    background-color: #3B1F0E; /* Mocha */
 }
