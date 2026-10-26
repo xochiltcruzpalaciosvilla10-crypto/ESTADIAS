@@ -259,18 +259,74 @@
 @media (prefers-reduced-motion: reduce) {
     .carrusel-fondo .slide-imagen,
     .carrusel-flecha,
-    .carrusel-indicador {
+    .carrusel-indicador{
         transition: none;
     }
 }
 
 /* Texto y botón delante del carrusel */
 .bienvenida-contenido {
-    position: relative;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 3;
-    width: 100%;
-    max-width: 900px;
+    width: min(90%, 900px);
     padding: 20px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.bienvenida-contenido h1 {
+    margin: 0 0 14px;
+    color: #F2D58A;
+    font-size: 3.5rem;
+    line-height: 1.05;
+    text-shadow: 0 3px 15px rgba(0, 0, 0, 0.65);
+}
+
+.bienvenida-contenido p {
+    margin: 0 0 24px;
+    color: #FFF8E8;
+    font-size: 1.25rem;
+    line-height: 1.4;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.btn-entrar {
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px;
+    border: 1px solid #F2D58A;
+    border-radius: 8px;
+    background: #C9A44C;
+    color: #24150F;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-entrar:hover {
+    background: #F2D58A;
+    transform: translateY(-2px);
+}
+
+.btn-entrar:focus-visible {
+    outline: 3px solid #FFF8E8;
+    outline-offset: 4px;
+}
+
+@media (max-width: 600px) {
+    .bienvenida-contenido h1 {
+        font-size: 2.25rem;
+    }
+
+    .bienvenida-contenido p {
+        font-size: 1rem;
+    }
 }
 
 /* Orden de las capas */
@@ -340,6 +396,14 @@
 
 <!-- Capa oscura sobre las imágenes -->
 <div class="carrusel-overlay"></div>
+
+<main class="bienvenida-contenido">
+    <h1>BAKESTOCK</h1>
+    <p>Sistema para el control de inventario</p>
+    <a class="btn-entrar" href="Inventario.php?vista=panel">
+        Entrar al sistema
+    </a>
+</main>
 
 <!-- Flechas e indicadores -->
 <div class="carrusel-controles">
