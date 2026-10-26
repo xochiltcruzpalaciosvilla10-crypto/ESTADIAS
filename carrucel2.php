@@ -276,6 +276,7 @@
     z-index: 4;
 }
 
+
 <!-- Carrusel de fotografías -->
 <div class="carrusel-fondo">
 
