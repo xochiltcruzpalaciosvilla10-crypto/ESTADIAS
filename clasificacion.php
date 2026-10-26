@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>panel</title>
@@ -216,8 +217,13 @@
         <div class="nav-logo">🍞</div>
         <ul class="nav-links">
             <li><a href="index.html">Inicio</a></li>
+<<<<<<< HEAD
             <li><a href="carrucel2.php" class="activo">Maquinaria</a></li>
             <li><a href="carrucel2.php">Utensilios</a></li>
+=======
+            <li><a href="carrucel2.php">Utensilios</a></li>
+            <li><a href="carrucel2.php" class="activo">Maquinaria</a></li>
+>>>>>>> 8d1a608e5ef18727a3c227daaca98193b1bff18c
         </ul>
     </nav>
 
