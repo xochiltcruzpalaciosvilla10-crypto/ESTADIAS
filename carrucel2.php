@@ -6,7 +6,10 @@
     <title>SLIDER</title>
 </head>
 <body>
+<<<<<<< HEAD
     <style>
+=======
+>>>>>>> ae3c293e0a73a56750d4c314468b230644c216c6
 
 /* CARRUSEL ELEGANTE: CAFÉ OSCURO Y DORADO */
 
@@ -276,8 +279,11 @@
 .carrusel-controles {
     z-index: 4;
 }
+<<<<<<< HEAD
 </style>
 /*==============html============*/
+=======
+>>>>>>> ae3c293e0a73a56750d4c314468b230644c216c6
 
 <!-- Carrusel de fotografías -->
 <div class="carrusel-fondo">
