@@ -18,17 +18,58 @@
 }
 
 body {
+    position: relative;
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 24px;
+    overflow: hidden;
     background:
-        radial-gradient(circle at top, rgba(215, 179, 106, 0.18), transparent 30%),
-        linear-gradient(135deg, #f7f0e9 0%, #f0ddbf 100%);
+        radial-gradient(ellipse at 50% 110%, rgba(121, 71, 37, 0.28), transparent 55%),
+        linear-gradient(135deg, #171411 0%, #29221b 48%, #171411 100%);
+}
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(28px);
+    opacity: 0.7;
+    pointer-events: none;
+    animation: floatBakery 22s ease-in-out infinite alternate;
+}
+
+body::before {
+    width: 360px;
+    height: 360px;
+    left: -110px;
+    bottom: -130px;
+    background: radial-gradient(circle, rgba(197, 151, 77, 0.5), rgba(123, 75, 38, 0.13) 58%, transparent 72%);
+}
+
+body::after {
+    width: 430px;
+    height: 430px;
+    right: -140px;
+    top: -170px;
+    background: radial-gradient(circle, rgba(157, 111, 58, 0.36), rgba(87, 60, 35, 0.08) 58%, transparent 72%);
+    animation-delay: 2s;
+}
+
+@keyframes floatBakery {
+    0% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    100% {
+        transform: translate3d(24px, -18px, 0) scale(1.08);
+    }
 }
 
 .container {
+    position: relative;
+    z-index: 1;
     width: min(950px, 100%);
     min-height: 540px;
     display: flex;
@@ -243,3 +284,9 @@ form {
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    body::before,
+    body::after {
+        animation: none;
+    }
+}
