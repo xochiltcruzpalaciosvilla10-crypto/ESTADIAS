@@ -65,7 +65,7 @@ try {
         $_SERVER['REQUEST_METHOD'] === 'POST' &&
         ($_POST['accion'] ?? '') === 'guardar'
     ) {
-        $categoriasPermitidas = ['Maquinaria', 'Utensilios'];
+        $categoriasPermitidas = ['Maquinaria'];
 
         $nombre = trim($_POST['nombre'] ?? '');
         $categoria = $_POST['categoria'] ?? 'Maquinaria';
@@ -123,7 +123,7 @@ if (
     $nombreEliminar = trim($_POST['nombre'] ?? '');
     $categoriaEliminar = $_POST['categoria'] ?? '';
 
-    $categoriasPermitidas = ['Maquinaria', 'Utensilios'];
+    $categoriasPermitidas = ['Maquinaria', ];
 
     if (
         $nombreEliminar !== '' &&
@@ -528,7 +528,7 @@ $vista = $_GET['vista'] ?? 'panel';
 <?php 
 if ($vista === 'panel'): 
     $subVista = isset($_GET['accion_panel']) ? $_GET['accion_panel'] : 'ver_tablas';
-    $categoriasPermitidas = ['Maquinaria', 'Utensilios'];
+    $categoriasPermitidas = ['Maquinaria'];
     $seccionActual = $_GET['seccion'] ?? 'Maquinaria';
     if (!in_array($seccionActual, $categoriasPermitidas, true)) {
         $seccionActual = 'Maquinaria';
@@ -725,7 +725,7 @@ if ($vista === 'panel'):
 
             <?php if ($subVista === 'agregar'): 
                 // Detectamos qué categoría seleccionó el usuario desde el menú izquierdo
-                $categoriasPermitidas = ['Maquinaria', 'Utensilios'];
+                $categoriasPermitidas = ['Maquinaria',];
                 $categoriaSeleccionada = $_GET['cat'] ?? 'Maquinaria';
                 if (!in_array($categoriaSeleccionada, $categoriasPermitidas, true)) {
                     $categoriaSeleccionada = 'Maquinaria';
