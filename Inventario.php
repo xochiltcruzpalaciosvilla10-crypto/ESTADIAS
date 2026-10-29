@@ -165,7 +165,7 @@ $inventario = $pdo->query(
     );
 }
 
-$vista = $_GET['vista'] ?? 'bienvenida';
+$vista = $_GET['vista'] ?? 'panel';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -627,6 +627,7 @@ $vista = $_GET['vista'] ?? 'bienvenida';
         
 <?php endif; ?>
 
+>>>>>>> df57317159a1be3400483e21f50466dbcfec2bb8
 <?php 
 if ($vista === 'panel'): 
     $subVista = isset($_GET['accion_panel']) ? $_GET['accion_panel'] : 'ver_tablas';
@@ -737,7 +738,7 @@ if ($vista === 'panel'):
         <aside class="sidebar">
             <h2>🥖 Pan Panel</h2>
             <ul class="sidebar-menu">
-    <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Utensilios" style="<?php echo ($seccionActual === 'Utensilios' && $subVista === 'ver_tablas') ? 'background-color: var(--cafe-claro); color: white;' : ''; ?>">🛠️ Ver Utensilios</a></li> 
+    <li><a href="ver%20utensilios.php">🛠️ Ver Utensilios</a></li>
 
     <li style="margin-top: 15px; font-size: 0.85rem; color: var(--dorado); font-weight: bold; padding-left: 15px; letter-spacing: 1px;">AÑADIR AL INVENTARIO</li>
     <li><a href="?vista=panel&accion_panel=agregar&cat=Utensilios">➕ Agregar Utensilios</a></li>
@@ -749,10 +750,10 @@ if ($vista === 'panel'):
             🛠️ Utensilios ▾
         </button>
         <ul style="display:none; list-style:none; background:rgba(59,31,14,0.15); border-radius:8px; margin-top:5px; padding:5px;">
-            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Medicion" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">⚖️ Medición y Pesado</a></li>
-            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Mezcla" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">🥣 Mezcla y Preparación</a></li>
-            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Corte" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">🔪 Corte, División y Formado</a></li>
-            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Horneado" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">🔥 Horneado y Reposo</a></li>
+            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Medicion" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">Medición y Pesado</a></li>
+            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Mezcla" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">Mezcla y Preparación</a></li>
+            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Corte" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">Corte, División y Formado</a></li>
+            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Horneado" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">Horneado y Reposo</a></li>
         </ul>
     </li>
 
@@ -989,171 +990,7 @@ if ($vista === 'panel'):
         }
     });
 }
-        </script>
-        <script>
-        function iniciarMusicaPorInteraccion() {
-            const musica = document.getElementById("musicaPanaderia");
-            
-            if (musica && musica.paused) {
-        musica.play().catch(function(error) {
-            console.log("El navegador bloqueó el audio temporalmente: ", error);
-        });
-    }
-}
-
-// Opcional: Si el usuario da clic directo en el botón de entrar, intentamos reproducir una milésima de segundo antes de cambiar de página
-document.querySelector('.btn-entrar')?.addEventListener('click', function() {
-    iniciarMusicaPorInteraccion();
-});
-</script>
-
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const slides = document.querySelectorAll(
-        ".carrusel-fondo .slide-imagen"
-    );
-
-    const indicadores = document.querySelectorAll(
-        ".carrusel-indicador"
-    );
-
-    const botonAnterior = document.querySelector(
-        ".carrusel-flecha.anterior"
-    );
-
-    const botonSiguiente = document.querySelector(
-        ".carrusel-flecha.siguiente"
-    );
-
-    const zonaImagenes = document.querySelector(".carrusel-fondo");
-    const zonaControles = document.querySelector(".carrusel-controles");
-
-    // Si estamos en el panel del inventario, no hay carrusel.
-    if (slides.length === 0) return;
-
-    let indiceSlide = 0;
-    let temporizadorCarrusel = null;
-    const intervaloCarrusel = 4000;
-
-    function mostrarSlide(nuevoIndice) {
-        indiceSlide =
-            (nuevoIndice + slides.length) % slides.length;
-
-        slides.forEach(function (slide, indice) {
-            const activo = indice === indiceSlide;
-
-            slide.classList.toggle("activo", activo);
-            slide.setAttribute(
-                "aria-hidden",
-                activo ? "false" : "true"
-            );
-        });
-
-        indicadores.forEach(function (indicador, indice) {
-            const activo = indice === indiceSlide;
-
-            indicador.classList.toggle("activo", activo);
-            indicador.setAttribute(
-                "aria-pressed",
-                activo ? "true" : "false"
-            );
-        });
-    }
-
-    function cambiarImagenCarrusel() {
-        mostrarSlide(indiceSlide + 1);
-    }
-
-    function detenerTemporizadorCarrusel() {
-        if (temporizadorCarrusel !== null) {
-            clearInterval(temporizadorCarrusel);
-            temporizadorCarrusel = null;
-        }
-    }
-
-    function iniciarTemporizadorCarrusel() {
-        if (slides.length <= 1) return;
-        if (temporizadorCarrusel !== null) return;
-
-        temporizadorCarrusel = setInterval(
-            cambiarImagenCarrusel,
-            intervaloCarrusel
-        );
-    }
-
-    function reiniciarTemporizadorCarrusel() {
-        detenerTemporizadorCarrusel();
-        iniciarTemporizadorCarrusel();
-    }
-
-    if (botonAnterior) {
-        botonAnterior.addEventListener("click", function (evento) {
-            evento.stopPropagation();
-            mostrarSlide(indiceSlide - 1);
-            reiniciarTemporizadorCarrusel();
-        });
-    }
-
-    if (botonSiguiente) {
-        botonSiguiente.addEventListener("click", function (evento) {
-            evento.stopPropagation();
-            mostrarSlide(indiceSlide + 1);
-            reiniciarTemporizadorCarrusel();
-        });
-    }
-
-    indicadores.forEach(function (indicador) {
-        indicador.addEventListener("click", function (evento) {
-            evento.stopPropagation();
-
-            const destino = Number(
-                indicador.getAttribute("data-slide")
-            );
-
-            if (
-                Number.isInteger(destino) &&
-                destino >= 0 &&
-                destino < slides.length
-            ) {
-                mostrarSlide(destino);
-                reiniciarTemporizadorCarrusel();
-            }
-        });
-    });
-
-    // Pausar el cambio automático mientras se usan los controles.
-    [zonaImagenes, zonaControles].forEach(function (zona) {
-        if (!zona) return;
-
-        zona.addEventListener(
-            "mouseenter",
-            detenerTemporizadorCarrusel
-        );
-
-        zona.addEventListener(
-            "mouseleave",
-            iniciarTemporizadorCarrusel
-        );
-
-        zona.addEventListener(
-            "focusin",
-            detenerTemporizadorCarrusel
-        );
-
-        zona.addEventListener("focusout", function (evento) {
-            if (!zona.contains(evento.relatedTarget)) {
-                iniciarTemporizadorCarrusel();
-            }
-        });
-    });
-
-    // Mostrar la primera imagen e iniciar el cambio automático.
-    mostrarSlide(0);
-    iniciarTemporizadorCarrusel();
-});
 </script>
 
 </body>
 </html>
-
