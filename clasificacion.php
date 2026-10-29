@@ -150,26 +150,10 @@
 </head>
 <body>
 
-<<<<<<< HEAD
+
 <!-- SECCIÓN -->
 <section class="seccion-equipo">
     <h2 class="titulo-equipo">BAKESTOCK</h2>
-=======
-    <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="nav-logo">🍞</div>
-        <ul class="nav-links">
-            <li><a href="index.html">Inicio</a></li>
-<<<<<<< HEAD
-            <li><a href="carrucel2.php" class="activo">Maquinaria</a></li>
-            <li><a href="carrucel2.php">Utensilios</a></li>
-=======
-            <li><a href="carrucel2.php">Utensilios</a></li>
-            <li><a href="carrucel2.php" class="activo">Maquinaria</a></li>
->>>>>>> 8d1a608e5ef18727a3c227daaca98193b1bff18c
-        </ul>
-    </nav>
->>>>>>> df57317159a1be3400483e21f50466dbcfec2bb8
 
     <!-- Contenedor que activa las 3 divisiones -->
     <div class="pantalla-dividida">
