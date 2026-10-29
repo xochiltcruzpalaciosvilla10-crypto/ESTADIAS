@@ -65,7 +65,7 @@ try {
         $_SERVER['REQUEST_METHOD'] === 'POST' &&
         ($_POST['accion'] ?? '') === 'guardar'
     ) {
-        $categoriasPermitidas = ['Maquinaria'];
+        $categoriasPermitidas = ['Maquinaria', 'Utensilios'];
 
         $nombre = trim($_POST['nombre'] ?? '');
         $categoria = $_POST['categoria'] ?? 'Maquinaria';
@@ -123,7 +123,7 @@ try {
         $nombreEliminar = trim($_POST['nombre'] ?? '');
         $categoriaEliminar = $_POST['categoria'] ?? '';
 
-        $categoriasPermitidas = ['Maquinaria', 'Utensilios'];
+        $categoriasPermitidas = ['Maquinaria', 'Utensilios', 'Insumos'];
 
         if (
             $nombreEliminar !== '' &&
@@ -156,16 +156,12 @@ $inventario = $pdo->query(
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
-
-    http_response_code(500);
-    exit(
-        'No se pudo conectar con la base de datos. '
-        . 'Verifica que MySQL esté iniciado y que la base de datos '
-        . 'bakestock exista.'
-    );
 }
 
 $vista = $_GET['vista'] ?? 'panel';
+if ($vista === 'dashboard') {
+    $vista = 'panel';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -523,129 +519,14 @@ $vista = $_GET['vista'] ?? 'panel';
     </style>
 </head>
 <body>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Inventario - Panadería</title>
-    <style>
-        :root { 
-            --cafe-oscuro: #3B1F0E;  /* Mocha */
-            --cafe-claro:  #6B3A2A;  /* Brown */
-            --crema:       #F5F0E8;  /* Ivory */
-            --dorado:      #C9A87C;  /* Cream */
-            --texto:       #2C1A0E;  /* Mocha oscuro */
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { background-color: #F5F0E8; color: var(--texto); }
-        
-        .bienvenida-container h1 { font-size: 3.5rem; margin-bottom: 15px; font-weight: bold; letter-spacing: 2px; }
-        .bienvenida-container p { font-size: 1.3rem; margin-bottom: 35px; color: #E6CCB2; }
-        
-        .btn-entrar { 
-            width: 220px;
-            height: 50px;
-            border: none;
-            border-radius: 10px;
-            background: linear-gradient(
-                to right, #77530a, #ffd277, #77530a, #77530a, #ffd277, #77530a
-            );
-            background-size: 250%;
-            background-position: left;
-            color: #ffd277;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background-position 1s, transform 0.2s;
-            overflow: hidden;
-            text-decoration: none;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            margin: 0 auto;
-        }
-        .btn-entrar::before {
-            position: absolute;
-            content: "Entrar al Sistema →";
-            color: #ffd277;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 97%;
-            height: 90%;
-            border-radius: 8px;
-            background-color: rgba(0, 0, 0, 0.88);
-            transition: background-color 0.5s;
-            font-size: 1rem;
-        }
-        .btn-entrar:hover { background-position: right; }
-        .btn-entrar:hover::before {
-            background-color: rgba(35, 22, 8, 0.9);
-        }
-        .btn-entrar:active {
-            transform: scale(0.95);
-        }
-        
-        .bienvenida-container {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 35px 20px;
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(160deg, #3B1F0E, #6B3A2A, #A0522D, #C9A87C);
-            color: #F5F0E8;
-            text-align: center;
-        }
 
-        /* CARRUSEL ELEGANTE: CAFÉ OSCURO Y DORADO*/
-        .carrusel-fondo {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: min(90%, 1000px);
-            height: min(55vh, 420px);
-            min-height: 250px;
-            overflow: hidden;
-            border-radius: 22px;
-            border: 2px solid #C9A44C;
-            z-index: 1;
-        }
-    </style>
-</head>
-<body>
-
-    <?php if ($vista === 'panel'): ?>
-        <div class="bienvenida-container">
-            <h1>BakeStock</h1>
-            <p>Sistema de Gestión de Inventario para Panaderías</p>
-            <a href="?vista=dashboard" class="btn-entrar"></a>
-        </div>
-    <?php else: ?>
-        <div style="padding: 20px;">
-            <h2>Panel de Control - Inventario Activo</h2>
-            <p>Aquí puedes empezar a mostrar tu lista de productos o el formulario.</p>
-            <br>
-            <a href="?vista=panel" style="color: var(--cafe-claro); font-weight: bold;">← Volver al Inicio</a>
-        </div>
-    <?php endif; ?>
-
-</body>
-</html>
-
-<?php if ($vista === 'panel'): ?>
 <?php 
 if ($vista === 'panel'): 
     $subVista = isset($_GET['accion_panel']) ? $_GET['accion_panel'] : 'ver_tablas';
     $categoriasPermitidas = ['Maquinaria', 'Utensilios', 'Insumos'];
     $seccionActual = $_GET['seccion'] ?? 'Maquinaria';
     if (!in_array($seccionActual, $categoriasPermitidas, true)) {
-        $seccionActual = 'Maquinaria', 'Utensilios', 'Insumos';
+        $seccionActual = 'Maquinaria';
     }
     function obtenerAlertaStock($actual, $minimo) {
         if ($actual == 0) { 
