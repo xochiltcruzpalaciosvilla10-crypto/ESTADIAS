@@ -168,7 +168,7 @@
                 <img src="insumos/insumo10.jfif" alt="Insumos" class="img-mini">
                 
                 <!-- BOTÓN INTEGRADO CON ONCLICK DIRECTO -->
-                <button class="btn-entrar" onclick="window.location.href='inventario.php'">Entrar al sistema</button>
+                <a href="inventario.php?vista=panel&seccion=Insumos" class="btn-entrar">ENTRAR AL SISTEMA</a>
             </div>
         </div>
 
@@ -194,7 +194,7 @@
                 <img src="equipoMenor/menor14.jfif" alt="Utensilios" class="img-mini">
                 
                 <!-- BOTÓN INTEGRADO CON ONCLICK DIRECTO -->
-                <button class="btn-entrar" onclick="window.location.href='inventario.php'">Entrar al sistema</button>
+                 <a href="inventario.php?vista=panel&seccion=Utensilios" class="btn-entrar">ENTRAR AL SISTEMA</a>
             </div>
         </div>
 
@@ -217,7 +217,7 @@
                 <img src="equipoMayor/mayor11.jfif" alt="Maquinaria" class="img-mini">
                 
                 <!-- BOTÓN INTEGRADO CON ONCLICK DIRECTO -->
-                <button class="btn-entrar" onclick="window.location.href='inventario.php'">Entrar al sistema</button>
+                <a href="inventario.php?vista=panel&seccion=Maquinaria" class="btn-entrar">ENTRAR AL SISTEMA</a>
             </div>
         </div>
     </div>
