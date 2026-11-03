@@ -1,166 +1,66 @@
 <?php
-session_start();
+$secciones = [
+    'inicio' => [
+        'etiqueta' => 'Inicio',
+        'titulo' => 'Bienvenido al panel principal',
+        'descripcion' => 'Selecciona una etapa del proceso de panadería en el menú para consultar su información.',
+    ],
+    'medicion' => [
+        'etiqueta' => 'Medición y Pesado',
+        'titulo' => 'Medición y Pesado',
+        'descripcion' => 'Etapa 1: prepara y pesa las cantidades de cada ingrediente antes de comenzar la elaboración.',
+        'herramientas' => [
+            'Balanza de precisión / Báscula digital',
+            'Jarras y cucharas medidoras',
+            'Termómetro',
+        ],
+    ],
+    'mezcla' => [
+        'etiqueta' => 'Mezcla y Preparación',
+        'titulo' => 'Mezcla y Preparación',
+        'descripcion' => 'Etapa 2: integra los ingredientes y prepara la masa de acuerdo con el producto que vas a elaborar.',
+        'herramientas' => [
+            'Bowls o cuencos',
+            'Cernidores o arneros',
+            'Espátulas y brochas',
+        ],
+    ],
+    'corte' => [
+        'etiqueta' => 'Corte, División y formado',
+        'titulo' => 'Corte, División y formado',
+        'descripcion' => 'Etapa 3: divide la masa en porciones y dales la forma necesaria antes de hornearlas.',
+        'herramientas' => [
+            'Raspador de masa',
+            'Cuchillos de sierra y hojas de panadero',
+            'Rodillos de amasar',
+            'Cortadores y moldes',
+        ],
+    ],
+    'horneado' => [
+        'etiqueta' => 'Horneado y reposo',
+        'titulo' => 'Horneado y reposo',
+        'descripcion' => 'Etapa 4: hornea las piezas y déjalas reposar el tiempo necesario antes de manipularlas.',
+        'herramientas' => [
+            'Charolas y bandejas',
+            'Moldes de caja y rosca',
+            'Rejilla de enfriamiento',
+        ],
+    ],
+];
 
-/* Conexión con la base de datos */
-try {
-    $pdo = new PDO(
-        "mysql:host=localhost;dbname=bakestock;charset=utf8mb4", "root", ""
-    );
-
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-    /* Conservar los productos que todavía existan en la sesión */
-    if (!isset($_SESSION['inventario'])) {
-        $_SESSION['inventario'] = [
-            [
-                "nombre" => "Horno Convector 10 Charolas",
-                "categoria" => "Maquinaria",
-                "stock_actual" => 1,
-                "stock_minimo" => 1,
-                "nota" => "Requiere servicio pronto"
-            ],
-            [
-                "nombre" => "Charolas Zintro Perforadas",
-                "categoria" => "Utensilios",
-                "stock_actual" => 40,
-                "stock_minimo" => 50,
-                "nota" => "Mesa de armado"
-            ]
-        ];
-    }
-
-    /*
-     * Migrar los productos de la sesión solo si la tabla
-     *    está vacía. Así evitamos duplicarlos si ya hay datos.
-     */
-    $totalProductos = (int) $pdo
-        ->query("SELECT COUNT(*) FROM inventario")
-        ->fetchColumn();
-
-    if ($totalProductos === 0 && !empty($_SESSION['inventario'])) {
-        $pdo->beginTransaction();
-
-        $sqlMigracion = $pdo->prepare(
-            "INSERT INTO inventario
-            (nombre, categoria, stock_actual, stock_minimo, nota)
-            VALUES (:nombre, :categoria, :actual, :minimo, :nota)"
-        );
-
-        foreach ($_SESSION['inventario'] as $item) {
-            $sqlMigracion->execute([
-                ':nombre' => $item['nombre'],
-                ':categoria' => $item['categoria'],
-                ':actual' => $item['stock_actual'],
-                ':minimo' => $item['stock_minimo'],
-                ':nota' => $item['nota'] ?? ''
-            ]);
-        }
-
-        $pdo->commit();
-    }
-
-    /* Guardar un producto nuevo en MySQL */
-    if (
-        $_SERVER['REQUEST_METHOD'] === 'POST' &&
-        ($_POST['accion'] ?? '') === 'guardar'
-    ) {
-        $categoriasPermitidas = ['Maquinaria', 'Utensilios'];
-
-        $nombre = trim($_POST['nombre'] ?? '');
-        $categoria = $_POST['categoria'] ?? 'Maquinaria';
-
-        $stockActual = filter_var(
-            $_POST['stock_actual'] ?? null,
-            FILTER_VALIDATE_INT
-        );
-
-        $stockMinimo = filter_var(
-            $_POST['stock_minimo'] ?? null,
-            FILTER_VALIDATE_INT
-        );
-
-        if (
-            $nombre === '' ||
-            !in_array($categoria, $categoriasPermitidas, true) ||
-            $stockActual === false ||
-            $stockActual === null ||
-            $stockMinimo === false ||
-            $stockMinimo === null ||
-            $stockActual < 0 ||
-            $stockMinimo < 0
-        ) {
-            http_response_code(400);
-            exit('Error: revisa los datos del producto.');
-        }
-
-        $sqlGuardar = $pdo->prepare(
-            "INSERT INTO inventario
-            (nombre, categoria, stock_actual, stock_minimo, nota)
-            VALUES (:nombre, :categoria, :actual, :minimo, :nota)"
-        );
-
-        $sqlGuardar->execute([
-            ':nombre' => $nombre,
-            ':categoria' => $categoria,
-            ':actual' => $stockActual,
-            ':minimo' => $stockMinimo,
-            ':nota' => trim($_POST['nota'] ?? '')
-        ]);
-
-        header(
-            "Location: ?vista=panel&accion_panel=ver_tablas&seccion="
-            . urlencode($categoria)
-        );
-        exit;
-    }
-    
-     /* Eliminar un producto de MySQL */
-    if (
-        $_SERVER['REQUEST_METHOD'] === 'POST' &&
-        ($_POST['accion'] ?? '') === 'eliminar'
-    ) {
-        $nombreEliminar = trim($_POST['nombre'] ?? '');
-        $categoriaEliminar = $_POST['categoria'] ?? '';
-
-        $categoriasPermitidas = ['Maquinaria', 'Utensilios', 'Insumos'];
-
-        if (
-            $nombreEliminar !== '' &&
-            in_array($categoriaEliminar, $categoriasPermitidas, true)
-        ) {
-            $stmt = $pdo->prepare(
-                "DELETE FROM inventario
-                 WHERE nombre = :nombre
-                 AND categoria = :categoria
-                 LIMIT 1"
-            );
-
-            $stmt->execute([
-                ':nombre' => $nombreEliminar,
-                ':categoria' => $categoriaEliminar
-            ]);
-        }
-
-        header("Location: ?vista=panel&accion_panel=eliminar_vista");
-        exit;
-    }
-
-/* Obtener los productos guardados en MySQL */
-$inventario = $pdo->query(
-    "SELECT * FROM inventario ORDER BY nombre ASC"
-)->fetchAll();
-
-
-} catch (PDOException $e) {
-    if (isset($pdo) && $pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
+$seccionActual = $_GET['seccion'] ?? 'inicio';
+if (!is_string($seccionActual) || !isset($secciones[$seccionActual])) {
+    $seccionActual = 'inicio';
 }
-
-$vista = $_GET['vista'] ?? 'panel';
-if ($vista === 'dashboard') {
-    $vista = 'panel';
+$seccion = $secciones[$seccionActual];
+$herramientaSeleccionada = null;
+if (
+    isset($_GET['herramienta'])
+    && is_string($_GET['herramienta'])
+    && ctype_digit($_GET['herramienta'])
+    && isset($seccion['herramientas'][(int) $_GET['herramienta']])
+) {
+    $herramientaSeleccionada = (int) $_GET['herramienta'];
 }
 ?>
 <!DOCTYPE html>
@@ -168,721 +68,378 @@ if ($vista === 'dashboard') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Inventario - Panadería</title>
+    <title><?php echo htmlspecialchars($seccion['titulo'], ENT_QUOTES, 'UTF-8'); ?> | BakeStock</title>
     <style>
-        :root { 
-            --cafe-oscuro: #3B1F0E;  /* Mocha */
-            --cafe-claro:  #6B3A2A;  /* Brown */
-            --crema:       #F5F0E8;  /* Ivory */
-            --dorado:      #C9A87C;  /* Cream */
-            --texto:       #2C1A0E;  /* Mocha oscuro */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { background-color: #F5F0E8; color: var(--texto); }
-        
 
-        .bienvenida-container h1 { font-size: 3.5rem; margin-bottom: 15px; font-weight: bold; letter-spacing: 2px; }
-        .bienvenida-container p { font-size: 1.3rem; margin-bottom: 35px; color: #E6CCB2; }
-        .btn-entrar { 
-              width: 220px;
-            height: 50px;
-            border: none;
-            border-radius: 10px;
-            background: linear-gradient(
-                to right, #77530a, #ffd277, #77530a, #77530a, #ffd277, #77530a
-            );
-            background-size: 250%;
-            background-position: left;
-            color: #ffd277;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background-position 1s, transform 0.2s;
-            overflow: hidden;
-            text-decoration: none;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            margin: 0 auto;
-            }
-            .btn-entrar::before {
-                position: absolute;
-                content: "Entrar al Sistema →";
-                color: #ffd277;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 97%;
-                height: 90%;
-                border-radius: 8px;
-                background-color: rgba(0, 0, 0, 0.88);
-                transition: background-color 0.5s;
-                font-size: 1rem;
-            }
-            .btn-entrar:hover { background-position: right; }
-            .btn-entrar:hover::before {
-                background-color: rgba(35, 22, 8, 0.9);
-            }
-
-            .btn-entrar:active {
-                transform: scale(0.95);
-            }
-         .bienvenida-container {
+        body {
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 35px 20px;
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(160deg, #3B1F0E, #6B3A2A, #A0522D, #C9A87C);
-            color: #F5F0E8;
+            background: #fdfbf7;
+            color: #3e2723;
+        }
+
+        .sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: 260px;
+            padding-top: 20px;
+            background: #3e2723;
+            color: #fff;
+            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .sidebar-header {
+            margin-bottom: 24px;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #5d4037;
             text-align: center;
         }
 
-/* CARRUSEL ELEGANTE: CAFÉ OSCURO Y DORADO*/
-
-        .carrusel-fondo {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-
-            width: min(90%, 1000px);
-            height: min(55vh, 420px);
-            min-height: 250px;
-
-            overflow: hidden;
-            border-radius: 22px;
-            border: 2px solid #C9A44C;
-
-            z-index: 1;
-
-            background-color: #24150F;
-
-            box-shadow:
-                0 15px 40px rgba(0, 0, 0, 0.50),
-                0 0 18px rgba(201, 164, 76, 0.20);
+        .sidebar-header h2 {
+            color: #ffb74d;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 1px;
         }
 
-        /* Fotografías */
-        .carrusel-fondo .slide-imagen {
-            position: absolute;
-            inset: 0;
+        .sidebar-menu {
+            list-style: none;
+        }
 
+        .sidebar-menu a {
             display: block;
-            width: 100%;
-            height: 100%;
-
-            object-fit: cover;
-            object-position: center;
-
-            opacity: 0;
-            transform: scale(1.04);
-
-            transition:
-                opacity 1.2s ease-in-out,
-                transform 4.5s ease-in-out;
-
-            will-change: opacity, transform;
+            padding: 15px 25px;
+            border-left: 4px solid transparent;
+            color: #d7ccc8;
+            font-size: 16px;
+            text-decoration: none;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
 
-        /* Fotografía activa */
-        .carrusel-fondo .slide-imagen.activo {
-            opacity: 1;
-            transform: scale(1);
+        .sidebar-menu a:hover,
+        .sidebar-menu a:focus-visible,
+        .sidebar-menu a.active {
+            border-left-color: #ffb74d;
+            background: #4e342e;
+            color: #fff;
+            outline: none;
         }
 
-        /* Capa café para que el texto se lea mejor */
-        .carrusel-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-
-            width: min(90%, 1000px);
-            height: min(55vh, 420px);
-            min-height: 250px;
-
-            border-radius: 22px;
-
-            background: linear-gradient(
-                135deg,
-                rgba(29, 17, 12, 0.72),
-                rgba(53, 31, 20, 0.42),
-                rgba(22, 13, 9, 0.72)
-            );
-
-            z-index: 2;
-            pointer-events: none;
+        .main-content {
+            width: calc(100% - 260px);
+            margin-left: 260px;
+            padding: clamp(28px, 6vw, 64px);
         }
 
-        /* Contenedor de flechas e indicadores */
-        .carrusel-controles {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-
-            width: min(90%, 1000px);
-            height: min(55vh, 420px);
-            min-height: min(250px);
-
-            z-index: 4;
-            pointer-events: none;
-        }
-
-        /* Flechas de navegación */
-        .carrusel-flecha {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-
+        .stage-tools {
             display: flex;
-            justify-content: center;
-            align-items: center;
-
-            width: 48px;
-            height: 48px;
-
-            border: 1px solid rgba(231, 197, 112, 0.85);
-            border-radius: 50%;
-
-            background: rgba(38, 23, 15, 0.82);
-            color: #F2D58A;
-
-            font-size: 32px;
-            line-height: 1;
-
-            cursor: pointer;
-            pointer-events: auto;
-
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
-
-            transition:
-                background 0.25s ease,
-                color 0.25s ease,
-                transform 0.25s ease,
-                box-shadow 0.25s ease;
-        }
-
-        .carrusel-flecha.anterior {
-            left: 16px;
-        }
-
-        .carrusel-flecha.siguiente {
-            right: 16px;
-        }
-
-        .carrusel-flecha:hover {
-            background: #C9A44C;
-            color: #24150F;
-
-            transform: translateY(-50%) scale(1.08);
-
-            box-shadow: 0 0 18px rgba(201, 164, 76, 0.4);
-        }
-
-        .carrusel-flecha:focus-visible,
-        .carrusel-indicador:focus-visible {
-            outline: 3px solid #F2D58A;
-            outline-offset: 4px;
-        }
-
-        /* Indicadores inferiores */
-        .carrusel-indicadores {
-            position: absolute;
-            left: 50%;
-            bottom: 16px;
-            transform: translateX(-50%);
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-
-            width: calc(100% - 110px);
-
-            pointer-events: auto;
-        }
-
-        /* Cada indicador */
-        .carrusel-indicador {
-            width: 10px;
-            height: 10px;
-            padding: 0;
-
-            border: 1px solid #E7C570;
-            border-radius: 50%;
-
-            background: rgba(255, 255, 255, 0.40);
-
-            cursor: pointer;
-
-            transition:
-                width 0.3s ease,
-                background 0.3s ease,
-                border-radius 0.3s ease,
-                box-shadow 0.3s ease;
-        }
-
-        /* Indicador seleccionado */
-        .carrusel-indicador.activo {
-            width: 28px;
-
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 12px 24px;
+            margin-bottom: 24px;
+            padding: 16px 20px;
             border-radius: 10px;
-            background: #D4AF59;
-
-            box-shadow: 0 0 10px rgba(212, 175, 89, 0.65);
+            background: #ffb74d;
+            color: #3e2723;
+            font-weight: 600;
         }
 
-        /* Adaptación para celulares */
-        @media (max-width: 600px) {
-            .carrusel-fondo,
-            .carrusel-overlay,
-            .carrusel-controles {
-                width: 92%;
-                height: 42vh;
-                min-height: 240px;
-            }
-
-        .carrusel-fondo,
-                .carrusel-overlay {
-                border-radius: 16px;
-            }
-
-            .carrusel-flecha {
-                width: 38px;
-                height: 38px;
-                font-size: 27px;
-            }
-
-            .carrusel-flecha.anterior {
-                left: 9px;
-            }
-
-            .carrusel-flecha.siguiente {
-                right: 9px;
-            }
-
-            .carrusel-indicadores {
-                bottom: 12px;
-                gap: 8px;
-                width: calc(100% - 80px);
-            }
-
-            .carrusel-indicador {
-                width: 8px;
-                height: 8px;
-            }
-
-            .carrusel-indicador.activo {
-                width: 22px;
-            }
+        .stage-tools a {
+            display: inline-flex;
+            align-items: center;
+            min-height: 42px;
+            padding: 10px 16px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            color: #3e2723;
+            text-align: center;
+            text-decoration: none;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
         }
 
-        /* Respeta la preferencia de movimiento reducido */
-        @media (prefers-reduced-motion: reduce) {
-            .carrusel-fondo .slide-imagen,
-            .carrusel-flecha,
-            .carrusel-indicador {
-                transition: none;
-            }
+        .stage-tools a:hover,
+        .stage-tools a:focus-visible,
+        .stage-tools a[aria-current="page"] {
+            border-color: #ffb74d;
+            background: #3e2723;
+            color: #fff;
+            outline: none;
         }
-        
-            /* Texto y botón siempre delante del carrusel */
-            .bienvenida-contenido {
-                position: relative;
-                z-index: 3;
+
+        .content-card {
+            width: 100%;
+            padding: clamp(24px, 5vw, 42px);
+            border: 1px solid #eadcc9;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 10px 28px rgba(62, 39, 35, 0.08);
+        }
+
+        .inventory-heading {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #d7b36a;
+        }
+
+        .inventory-heading h1 {
+            margin: 0;
+            color: #3e2723;
+            font-size: clamp(1.5rem, 3vw, 2rem);
+        }
+
+        .print-button {
+            padding: 10px 16px;
+            border: 0;
+            border-radius: 8px;
+            background: #3e2723;
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .print-button:hover,
+        .print-button:focus-visible {
+            background: #7a442a;
+        }
+
+        .inventory-search {
+            width: 100%;
+            margin-bottom: 20px;
+            padding: 13px 18px;
+            border: 2px solid #d7b36a;
+            border-radius: 25px;
+            color: #3e2723;
+            font: inherit;
+        }
+
+        .inventory-table-wrap {
+            overflow-x: auto;
+            padding: 16px;
+            border: 1px solid #f0e5d7;
+            border-radius: 10px;
+        }
+
+        .inventory-table-wrap h2 {
+            margin-bottom: 14px;
+            padding-left: 10px;
+            border-left: 4px solid #d7b36a;
+            color: #5d4037;
+            font-size: 1.15rem;
+        }
+
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .inventory-table th,
+        .inventory-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #eee4da;
+            white-space: nowrap;
+        }
+
+        .inventory-table th {
+            background: #f5efe7;
+            color: #3e2723;
+        }
+
+        .inventory-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #fff0cf;
+            color: #79551a;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .empty-search {
+            display: none;
+            padding: 18px 10px;
+            color: #79551a;
+            text-align: center;
+        }
+
+        .content-card h1 {
+            margin-bottom: 14px;
+            color: #3e2723;
+            font-size: clamp(1.7rem, 4vw, 2.4rem);
+        }
+
+        .content-card p {
+            color: #5d4037;
+            font-size: 1.05rem;
+            line-height: 1.7;
+        }
+
+        @media (max-width: 700px) {
+            .sidebar {
+                position: static;
                 width: 100%;
-                max-width: 900px;
-                padding: 20px;
+                padding-top: 14px;
             }
 
-            /* El carrusel permanece detrás del contenido */
-            .carrusel-fondo {
-                z-index: 1;
+            .sidebar-header {
+                margin-bottom: 10px;
+                padding-bottom: 14px;
             }
 
-            /* La capa oscura queda entre las fotos y el texto */
-            .carrusel-overlay {
-                z-index: 2;
+            .sidebar-menu {
+                display: flex;
+                overflow-x: auto;
+                padding-bottom: 8px;
             }
 
-        /* Flechas e indicadores por encima de las fotos */
-        .carrusel-controles {
-            z-index: 1;
+            .sidebar-menu li {
+                flex: 0 0 auto;
             }
-        
+
+            .sidebar-menu a {
+                padding: 12px 16px;
+                border-left: 0;
+                border-bottom: 3px solid transparent;
+                font-size: 14px;
+            }
+
+            .sidebar-menu a:hover,
+            .sidebar-menu a:focus-visible,
+            .sidebar-menu a.active {
+                border-bottom-color: #ffb74d;
+            }
+
+            .main-content {
+                width: 100%;
+                margin-left: 0;
+                padding: 24px 16px;
+            }
+        }
+
+        @media print {
+            .sidebar,
+            .stage-tools,
+            .inventory-search,
+            .print-button {
+                display: none !important;
+            }
+
+            .main-content {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            .content-card {
+                border: 0;
+                box-shadow: none;
+            }
+        }
     </style>
 </head>
 <body>
-
-<?php 
-if ($vista === 'panel'): 
-    $subVista = isset($_GET['accion_panel']) ? $_GET['accion_panel'] : 'ver_tablas';
-    $categoriasPermitidas = ['Maquinaria', 'Utensilios', 'Insumos'];
-    $seccionActual = $_GET['seccion'] ?? 'Maquinaria';
-    if (!in_array($seccionActual, $categoriasPermitidas, true)) {
-        $seccionActual = 'Maquinaria';
-    }
-    function obtenerAlertaStock($actual, $minimo) {
-        if ($actual == 0) { 
-            return '<span class="badge red">⚠️ SIN STOCK</span>';
-        }
-        if ($actual < $minimo) {
-            return '<span class="badge yellow">🟡 Stock Bajo</span>';
-        }
-        return '<span class="badge green">✅ OK</span>';
-    }
-?>
-    <style>
-        .layout { display: flex; min-height: 100vh; }
-        
-        /* Menú Lateral Izquierdo */
-        .sidebar { width: 280px; background: linear-gradient(180deg, #3B1F0E, #6B3A2A); color: #F5F0E8; padding: 25px 15px; display: flex; flex-direction: column; gap: 20px; }
-        .sidebar h2 { font-size: 1.4rem; border-bottom: 2px solid #C9A87C; padding-bottom: 10px; margin-bottom: 10px; text-align: center; color: #C9A87C; }
-        .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-        .sidebar-menu a { color: #F5F0E8; text-decoration: none; padding: 12px 15px; border-radius: 8px; display: block; font-weight: 500; transition: 0.2s; }
-        .sidebar-menu a:hover { background-color: #A0522D; color: #F5F0E8; padding-left: 20px; }
-        .sidebar-menu a { color: #E6CCB2; text-decoration: none; padding: 12px 15px; border-radius: 8px; display: block; font-weight: 500; transition: 0.2s; }
-        .sidebar-menu a:hover { background-color: var(--cafe-claro); color: white; padding-left: 20px; }
-        
-        /* Contenedor de Tablas */
-        .main-content { flex: 1; padding: 40px; background-color: #F5F0E8; }
-        .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #C9A87C; padding-bottom: 15px; }
-        .header-panel h1 { color: #3B1F0E; }
-        
-        .seccion-inventario { margin-bottom: 40px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .seccion-inventario h3 { color: var(--cafe-claro); margin-bottom: 15px; font-size: 1.3rem; border-left: 4px solid var(--dorado); padding-left: 10px; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; }
-        th, td { padding: 12px 15px; border-bottom: 1px solid #E6CCB2; font-size: 0.95rem; }
-        th { background-color: #F4EAE1; color: var(--cafe-oscuro); }
-        
-        /* Badges del Semáforo */
-        .badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; }
-        .badge.green { background-color: #D4EDDA; color: #155724; }
-        .badge.yellow { background-color: #FFF3CD; color: #856404; }
-        .badge.red { background-color: #F8D7DA; color: #721C24; }
-        
-        .btn-volver { background-color: #A68A64; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-size: 0.9rem; display: inline-block; }
-
-            @media print {
-                /* Ocultar menú, barra de búsqueda y botones */
-                .sidebar,
-                .buscador-container,
-                #buscadorInput,
-                .btn-volver {
-                    display: none !important;
-                }
-
-                /* Usar todo el ancho de la hoja */
-                .main-content {
-                    padding: 0 !important;
-                    margin: 0 !important;
-                    background-color: white !important;
-                    width: 100% !important;
-                }
-
-                /* Ocultar el botón de imprimir */
-                .header-panel button {
-                    display: none !important;
-                }
-
-                /* Imprimir el contenido con texto legible */
-                body,
-                table,
-                td,
-                th {
-                    color: #000 !important;
-                    background-color: white !important;
-                }
-
-                th {
-                    background-color: #eee !important;
-                    border-bottom: 2px solid #333 !important;
-                }
-            }
-                /* Mostrar las tablas tanto en pantalla como al imprimir */
-                .tabla-para-imprimir {
-                    display: block !important;
-                    width: 100%;
-                    overflow-x: auto;
-                }
-
-                /* Al imprimir: ocultar tarjetas y mostrar tablas */
-                @media print {
-                    .tabla-para-imprimir {
-                        display: block !important;
-                    }
-
-                    .tabla-para-imprimir table {
-                        display: table !important;
-                        width: 100%;
-                        border-collapse: collapse;
-                    }
-                }
-    </style>
-    <div class="layout">
-        <aside class="sidebar">
-            <h2>🥖 Pan Panel</h2>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>🥖 BakeStock</h2>
+        </div>
+        <nav aria-label="Menú principal">
             <ul class="sidebar-menu">
-    <li><a href="ver%20utensilios.php">🛠️ Ver Utensilios</a></li>
+                <?php foreach ($secciones as $id => $datos): ?>
+                    <li>
+                        <a
+                            href="Inventario.php?seccion=<?php echo urlencode($id); ?>"
+                            class="<?php echo $id === $seccionActual ? 'active' : ''; ?>"
+                            <?php echo $id === $seccionActual ? 'aria-current="page"' : ''; ?>
+                        ><?php echo htmlspecialchars($datos['etiqueta'], ENT_QUOTES, 'UTF-8'); ?></a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </nav>
+    </aside>
 
-    <li style="margin-top: 15px; font-size: 0.85rem; color: var(--dorado); font-weight: bold; padding-left: 15px; letter-spacing: 1px;">AÑADIR AL INVENTARIO</li>
-    <li><a href="?vista=panel&accion_panel=agregar&cat=Utensilios">➕ Agregar Utensilios</a></li>
-
-    <!-- Botón con opciones de Utensilios -->
-    <li style="margin-top: 15px;">
-        <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'" 
-            style="width:100%; background: linear-gradient(90deg,#3B1F0E,#6B3A2A); color:#F5F0E8; border: 1px solid #C9A87C; padding:12px 15px; border-radius:8px; font-weight:700; cursor:pointer; text-align:left; font-size:0.95rem;">
-            🛠️ Utensilios ▾
-        </button>
-        <ul style="display:none; list-style:none; background:rgba(59,31,14,0.15); border-radius:8px; margin-top:5px; padding:5px;">
-            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Medicion" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">Medición y Pesado</a></li>
-            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Mezcla" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">Mezcla y Preparación</a></li>
-            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Corte" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">Corte, División y Formado</a></li>
-            <li><a href="?vista=panel&accion_panel=ver_tablas&seccion=Horneado" style="color:#F5F0E8; display:block; padding:10px 15px; border-radius:6px; text-decoration:none; transition:0.2s;">Horneado y Reposo</a></li>
-        </ul>
-    </li>
-
-    <li style="margin-top: 15px; font-size: 0.85rem; color: var(--dorado); font-weight: bold; padding-left: 15px; letter-spacing: 1px;">ACCIONES CRÍTICAS</li>
-    <li><a href="?vista=panel&accion_panel=eliminar_vista" style="color: #D90429;">🗑️ Eliminar Producto</a></li>
-</ul>
-
-            <div style="margin-top: auto; text-align: center;">
-                <a href="?vista=bienvenida" class="btn-volver" style="background-color: transparent; border: 1px solid #E6CCB2; color: #E6CCB2;">Salir a Portada</a>
+    <main class="main-content">
+        <?php if (!empty($seccion['herramientas'])): ?>
+            <div class="stage-tools" aria-label="Herramientas de <?php echo htmlspecialchars($seccion['etiqueta'], ENT_QUOTES, 'UTF-8'); ?>">
+                <?php foreach ($seccion['herramientas'] as $indice => $herramienta): ?>
+                    <a
+                        href="Inventario.php?seccion=<?php echo urlencode($seccionActual); ?>&amp;herramienta=<?php echo $indice; ?>"
+                        <?php echo $herramientaSeleccionada === $indice ? 'aria-current="page"' : ''; ?>
+                    ><?php echo htmlspecialchars($herramienta, ENT_QUOTES, 'UTF-8'); ?></a>
+                <?php endforeach; ?>
             </div>
-        </aside>
-        <main class="main-content">
-            <?php if ($subVista === 'ver_tablas'): ?>
-                <div class="header-panel">
-                    <!--cambia el titulo segun la ventana -->
-                    <h1>Control de <?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?></h1>
-                    <!-- P Boton de imprimir -->
-                    <button onclick="window.print()" style="background-color: var(--cafe-oscuro); color: white; padding: 10px 20px; border: 2px solid var(--dorado); border-radius: 8px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; font-family: inherit;">
-                        🖨️ Imprimir Hoja
-                    </button>
+        <?php endif; ?>
+        <section class="content-card" aria-labelledby="page-title">
+            <?php if ($herramientaSeleccionada !== null): ?>
+                <?php $nombreHerramienta = $seccion['herramientas'][$herramientaSeleccionada]; ?>
+                <div class="inventory-heading">
+                    <h1 id="page-title">Control de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h1>
+                    <button class="print-button" type="button" onclick="window.print()">🖨️ Imprimir hoja</button>
                 </div>
-
-                <!-- Buscador que solo afectara a esta ventana activa -->
-                <div style="margin-bottom: 25px; width: 100%;">
-                    <input type="text" id="buscadorInput" onkeyup="filtrarInventario()" placeholder="🔍 Escribe para buscar en <?php echo htmlspecialchars(strtolower($seccionActual), ENT_QUOTES, 'UTF-8'); ?> en tiempo real..." style="width: 100%; padding: 12px 20px; border: 2px solid var(--dorado); border-radius: 25px; font-size: 1rem; outline: none; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-family: inherit;">
-                </div>
-
-                <div class="seccion-inventario contenedor-tabla-categoria tabla-para-imprimir">
-                    <h3>Listado Activo de <?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?></h3>
-                    <table>
+                <input
+                    class="inventory-search"
+                    id="inventory-search"
+                    type="search"
+                    placeholder="🔍 Escribe para buscar en <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>..."
+                    aria-label="Buscar en el inventario de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
+                >
+                <div class="inventory-table-wrap">
+                    <h2>Listado activo de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h2>
+                    <table class="inventory-table">
                         <thead>
                             <tr>
-                                <th>Nombre del Artículo</th>
-                                <th>Stock Actual</th>
-                                <th>Mínimo Requerido</th>
+                                <th>Nombre del artículo</th>
+                                <th>Stock actual</th>
+                                <th>Mínimo requerido</th>
                                 <th>Estado</th>
                                 <th>Notas / Ubicación</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <?php 
-                            $hayProductos = false;
-                            foreach ($inventario as $indice => $item): 
-                                // OJO: Si el artículo no pertenece a la ventana/sección activa, lo ignoramos
-                                if ($item['categoria'] !== $seccionActual) continue;
-                                $hayProductos = true;?>
-                                <tr class="fila-producto">
-                                    <td class="nombre-producto">
-                                    <?php echo htmlspecialchars($item['nombre'], ENT_QUOTES, 'UTF-8'); ?>
-                                    </td>
-                                    <td>
-                                        <span style="font-weight:bold; display:inline-block; width:25px; text-align:center;"><?php echo $item['stock_actual']; ?></span>
-                                    </td>
-                                    <td><?php echo $item['stock_minimo']; ?></td>
-                                    <td><?php echo obtenerAlertaStock($item['stock_actual'], $item['stock_minimo']); ?></td>
-                                    <td><i style="color: #666;"><?php echo htmlspecialchars($item['nota'], ENT_QUOTES, 'UTF-8'); ?></i></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            
-                            <tr class="mensaje-no-existe" style="display: none;">
-                                <td colspan="5" style="text-align: center; color: #D90429; font-weight: bold; padding: 15px;">
-                                    ⚠️ No se encontraron coincidencias en esta ventana.
-                                </td>
+                        <tbody id="inventory-rows">
+                            <tr class="inventory-row">
+                                <td><?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>—</td>
+                                <td>—</td>
+                                <td><span class="inventory-status">Sin registrar</span></td>
+                                <td>Pendiente de registrar existencias</td>
                             </tr>
-                            <?php if (!$hayProductos): ?>
-                                <tr><td colspan="5" style="text-align: center; color: #999;">No hay registros cargados en esta área.</td></tr>
-                            <?php endif; ?>
                         </tbody>
                     </table>
+                    <p class="empty-search" id="empty-search" role="status">No se encontraron resultados.</p>
                 </div>
+                <p style="margin-top: 18px;"><a href="Inventario.php?seccion=<?php echo urlencode($seccionActual); ?>">← Volver a <?php echo htmlspecialchars($seccion['etiqueta'], ENT_QUOTES, 'UTF-8'); ?></a></p>
+            <?php else: ?>
+                <h1 id="page-title"><?php echo htmlspecialchars($seccion['titulo'], ENT_QUOTES, 'UTF-8'); ?></h1>
+                <p><?php echo htmlspecialchars($seccion['descripcion'], ENT_QUOTES, 'UTF-8'); ?></p>
             <?php endif; ?>
+        </section>
+    </main>
+    <?php if ($herramientaSeleccionada !== null): ?>
+        <script>
+            const inventorySearch = document.getElementById('inventory-search');
+            inventorySearch.addEventListener('input', () => {
+                const query = inventorySearch.value.trim().toLocaleLowerCase();
+                let visibleRows = 0;
 
-            <?php if ($subVista === 'agregar'): 
-                // Detectamos qué categoría seleccionó el usuario desde el menú izquierdo
-                $categoriasPermitidas = ['Maquinaria',];
-                $categoriaSeleccionada = $_GET['cat'] ?? 'Maquinaria';
-                if (!in_array($categoriaSeleccionada, $categoriasPermitidas, true)) {
-                    $categoriaSeleccionada = 'Maquinaria';
-                }
-            ?>
-                <!-- VISTA: FORMULARIO DINÁMICO PARA AGREGAR ARTÍCULOS -->
-                <div class="header-panel">
-                    <h1>Añadir al Inventario</h1>
-                    <a href="?vista=panel&accion_panel=ver_tablas" class="btn-volver">← Cancelar y Regresar</a>
-                </div>
+                document.querySelectorAll('.inventory-row').forEach((row) => {
+                    const matches = row.textContent.toLocaleLowerCase().includes(query);
+                    row.hidden = !matches;
+                    if (matches) visibleRows++;
+                });
 
-                <style>
-                    .form-grupo { margin-bottom: 20px; display: flex; flex-direction: column; gap: 5px; }
-                    .form-grupo label { font-weight: bold; color: var(--cafe-oscuro); }
-                    .form-grupo input { padding: 12px; border: 1px solid #CBA36E; border-radius: 6px; font-size: 1rem; background-color: white; }
-                    .btn-guardar { background-color: var(--cafe-oscuro); color: white; padding: 14px 20px; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.2s; }
-                    .btn-guardar:hover { background-color: var(--cafe-claro); }
-                </style>
-
-                <div class="seccion-inventario" style="max-width: 600px; margin: 0 auto;">
-                    <h3 style="margin-bottom: 20px;">Registrar en el área de: <span style="color: var(--cafe-oscuro); text-transform: uppercase;"><?php echo htmlspecialchars($categoriaSeleccionada, ENT_QUOTES, 'UTF-8'); ?></span></h3>
-                    
-                    <!-- Formulario que envía los datos mediante método POST al bloque que procesará el guardado -->
-                    <form action="?vista=panel" method="POST">
-                        <!-- Campos ocultos para enviar la acción y la categoría automática -->
-                        <input type="hidden" name="accion" value="guardar">
-                        <input type="hidden" name="categoria" value="<?php echo htmlspecialchars( $categoriaSeleccionada, ENT_QUOTES, 'UTF-8'); ?>">
-
-                        <div class="form-grupo">
-                            <label for="nombre">Nombre del Artículo / Equipo:</label>
-                            <input type="text" id="nombre" name="nombre" placeholder="Ej. Amasadora, Charolas..." required>
-                        </div>
-
-                        <div class="form-grupo">
-                            <label for="stock_actual">Cantidad Actual en Existencia:</label>
-                            <input type="number" id="stock_actual" name="stock_actual" min="0" placeholder="0" required>
-                        </div>
-
-                        <div class="form-grupo">
-                            <label for="stock_minimo">Stock Mínimo (Alerta de Resurtido):</label>
-                            <input type="number" id="stock_minimo" name="stock_minimo" min="0" placeholder="5" required>
-                        </div>
-
-
-
-                        <div class="form-grupo">
-                            <label for="nota">Notas, Ubicación o Estado:</label>
-                            <input type="text" id="nota" name="nota" placeholder="Ej. Estante A, Requiere mantenimiento...">
-                        </div>
-
-                        <button type="submit" class="btn-guardar">💾 Guardar en el Inventario</button>
-                    </form>
-                </div>
-            <?php endif; ?>
-            <?php if ($subVista === 'eliminar_vista'): ?>
-                <div class="header-panel">
-                    <h1>Remover Productos del Inventario</h1>
-                    <a href="?vista=panel&accion_panel=ver_tablas" class="btn-volver">← Volver al inventario</a>
-                </div>
-
-                <div class="seccion-inventario">
-                    <h3 style="color: #D90429; border-left: 4px solid #D90429; padding-left: 10px; margin-bottom: 15px;">Lista de Control de Baja</h3>
-                    <p style="margin-bottom: 20px; font-size: 0.95rem; color: #666;">Haz clic en el botón de eliminar correspondiente al artículo que deseas dar de baja permanentemente.</p>
-
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background-color: #F4EAE1; color: var(--cafe-oscuro);">
-                                <th style="padding: 12px;">Categoría</th>
-                                <th style="padding: 12px;">Nombre del Artículo</th>
-                                <th style="padding: 12px;">Stock</th>
-                                <th style="padding: 12px; text-align: center;">Acción Crítica</th>
-                            </tr>
-                            </thead>
-                        <tbody>
-                            <?php if (count($inventario) > 0): ?>
-                                <?php foreach ($inventario as $indice => $item): ?>
-                                    <tr style="border-bottom: 1px solid #E6CCB2;">
-                                        <td style="padding: 12px;">
-                                            <?php echo htmlspecialchars($item['categoria'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td style="padding: 12px;">
-                                            <strong> <?php echo htmlspecialchars( $item['nombre'], ENT_QUOTES, 'UTF-8'); ?> </strong>
-                                        </td>
-                                        <td style="padding: 12px;"><?php echo $item['stock_actual']; ?> unidades</td>
-                                        <td style="text-align: center; padding: 12px;">
-                                    <form method="POST" action="?vista=panel&accion_panel=eliminar_vista"
-                                        style="display: inline;"
-                                        onsubmit="return confirm('¿Estás segura de que deseas eliminar este producto permanentemente?');">
-
-                                        <input type="hidden" name="accion" value="eliminar">
-
-                                        <input
-                                            type="hidden"
-                                            name="nombre"
-                                            value="<?php echo htmlspecialchars($item['nombre'], ENT_QUOTES, 'UTF-8'); ?>">
-
-                                        <input
-                                            type="hidden"
-                                            name="categoria"
-                                            value="<?php echo htmlspecialchars($item['categoria'], ENT_QUOTES, 'UTF-8'); ?>">
-
-                                        <button
-                                            type="submit"
-                                            style="background-color: #D90429; color: white; padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer;">
-                                            🗑️ Borrar
-                                            </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="4" style="text-align: center; color: #999; padding: 30px;">No hay ningún producto registrado en el sistema.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                            </table>
-                </div>
-                 <?php endif; ?>
-        </main>
-    </div>
-        <?php endif; // Cierre del panel principal ?>
-<script>
-    function filtrarInventario() {
-    const input = document.getElementById("buscadorInput");
-
-    if (!input) {
-        return;
-    }
-
-    const filtro = input.value.trim().toLowerCase();
-
-    const tablas = document.querySelectorAll(
-        ".contenedor-tabla-categoria"
-    );
-
-    tablas.forEach(function (bloque) {
-        const filas = bloque.querySelectorAll(".fila-producto");
-        const mensaje = bloque.querySelector(".mensaje-no-existe");
-        let coincidencias = 0;
-
-        filas.forEach(function (fila) {
-            const celda = fila.querySelector(".nombre-producto");
-            const nombre = celda
-                ? celda.textContent.toLowerCase()
-                : "";
-
-            const coincide = nombre.includes(filtro);
-
-            fila.style.display = coincide ? "" : "none";
-
-            if (coincide) {
-                coincidencias++;
-            }
-        });
-
-        if (mensaje) {
-            mensaje.style.display =
-                filtro !== "" && coincidencias === 0
-                    ? ""
-                    : "none";
-        }
-    });
-}
-</script>
-
+                document.getElementById('empty-search').style.display = visibleRows ? 'none' : 'block';
+            });
+        </script>
+    <?php endif; ?>
 </body>
 </html>
