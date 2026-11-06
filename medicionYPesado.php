@@ -3,107 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medición y Pesado - BakeStock</title>
+    <title>Panadería - Inventario e Obrador</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        .content-section { display: none; }
+        .active-section { display: block; }
+        .top-bar {
+            background-color: #ffb74d; color: #3e2723; padding: 12px 20px;
+            margin-bottom: 25px; border-radius: 6px; display: flex;
+            justify-content: space-around; align-items: center; font-weight: 600;
         }
-
-        body {
-            background: linear-gradient(160deg, #F5F0E8 0%, #C9A87C 50%, #A0522D 100%);
-            min-height: 100vh;
-        }
-
-        /* ===== NAVBAR ===== */
-        .navbar {
-            width: 100%;
-            background: linear-gradient(90deg, #3B1F0E, #6B3A2A, #A0522D, #C9A87C, #F5F0E8);
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 30px;
-            padding: 14px 40px;
-            box-shadow: 0 4px 12px rgba(59, 31, 14, 0.4);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-logo {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #F5F0E8;
-            letter-spacing: 2px;
-            text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
-        }
-
-        .nav-links {
-            list-style: none;
-            display: flex;
-            gap: 20px;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: #F5F0E8;
-            font-size: 1rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            padding: 6px 16px;
-            border-radius: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .nav-links a:hover,
-        .nav-links a.activo {
-            background-color: #F5F0E8;
-            color: #3B1F0E;
-        }
-
-        /* ===== CONTENIDO ===== */
-        .contenido {
-            padding: 50px 40px;
-            text-align: center;
-        }
-
-        .contenido h1 {
-            font-size: 3rem;
-            font-weight: 800;
-            letter-spacing: 4px;
-            background: linear-gradient(90deg, #3B1F0E, #6B3A2A, #C9A87C);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 20px;
-        }
-
-        .contenido p {
-            font-size: 1.1rem;
-            color: #3B1F0E;
-            opacity: 0.8;
-        }
+        .top-bar span { display: flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body>
 
-    <!-- NAVBAR CON BOTONES -->
-    <nav class="navbar">
-        <div class="nav-logo">🍞</div>
-        <ul class="nav-links">
-            <li><a href="medicionYPesado.php" class="activo"> Medición</a></li>
-            <li><a href="#">Corte</a></li>
-            <li><a href="#"> Mezcla</a></li>
+    <!-- Menú Lateral -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>🥖 Mi Panadería</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="#" class="menu-link active" onclick="showSection('inicio', this)">Inicio</a></li>
+            
+            <!-- EL BOTÓN CONECTADO -->
+            <li>
+                <a href="#" class="menu-link" onclick="showSection('pesado', this)">⚖️ Medición y Pesado</a>
+            </li>
+            
+            <li><a href="#" class="menu-link" onclick="showSection('pan-dulce', this)">🍞 Pan Dulce</a></li>
         </ul>
-    </nav>
+    </aside>
 
-    <!-- CONTENIDO -->
-    <div class="contenido">
-        <h1>MEDICIÓN Y PESADO</h1>
-        <p>Control de utensilios de medición y pesado</p>
-    </div>
+    <!-- Contenido Principal Dinámico -->
+    <main class="main-content">
+        
+        <!-- Sección 1: Inicio -->
+        <section id="inicio" class="content-section active-section">
+            <h1>Bienvenido al Inventario</h1>
+            <p>Selecciona una opción del menú lateral para comenzar a trabajar.</p>
+        </section>
 
+        <!-- Sección 2: Medición y pesado -->
+        <section id="pesado" class="content-section">
+            <div class="top-bar" aria-label="Herramientas de medición">
+                <span>⚖️ Balanza de precisión / Báscula digital</span>
+                <span>🥄 Jarras y cucharas medidoras</span>
+                <span>🌡️ Termómetro</span>
+            </div>
+            <h1>Medición y Pesado</h1>
+            <p>Pesa y mide cada ingrediente antes de comenzar la preparación.</p>
+        </section>
+
+
+        <!-- Sección 3: Pan Dulce -->
+        <section id="pan-dulce" class="content-section">
+            <h1>Catálogo de Pan Dulce</h1>
+            <p>Información sobre conchas, orejas, donas y tiempos de horneado.</p>
+        </section>
+
+    </main>
+
+    <!-- JavaScript para cambiar de sección -->
+    <script>
+        function showSection(sectionId, element) {
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(sec => sec.classList.remove('active-section'));
+            
+            document.getElementById(sectionId).classList.add('active-section');
+            
+            const links = document.querySelectorAll('.menu-link');
+            links.forEach(link => link.classList.remove('active'));
+            
+            element.classList.add('active');
+        }
+    </script>
 </body>
 </html>

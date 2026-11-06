@@ -156,7 +156,6 @@
 
             <!-- Envoltura para el carrusel automático -->
             <div class="visor-mini-carrusel">
-                <img src="insumos/insumo1.jfif" alt="Insumos" class="img-mini activa">
                 <img src="insumos/insumo2.jfif" alt="Insumos" class="img-mini">
                 <img src="insumos/insumo3.jfif" alt="Insumos" class="img-mini">
                 <img src="insumos/insumo4.jfif" alt="Insumos" class="img-mini">
@@ -168,7 +167,7 @@
                 <img src="insumos/insumo10.jfif" alt="Insumos" class="img-mini">
                 
                 <!-- BOTÓN INTEGRADO CON ONCLICK DIRECTO -->
-                <a href="inventario.php?vista=panel&seccion=Insumos" class="btn-entrar">ENTRAR AL SISTEMA</a>
+                <a href="insumos.php?seccion=secos" class="btn-entrar">ENTRAR AL SISTEMA</a>
             </div>
         </div>
 
@@ -178,7 +177,6 @@
 
             <!-- Envoltura para el carrusel automático -->
             <div class="visor-mini-carrusel">
-                <img src="equipoMenor/menor1.jfif" alt="Utensilios" class="img-mini activa">
                 <img src="equipoMenor/menor2.jfif" alt="Utensilios" class="img-mini">
                 <img src="equipoMenor/menor3.jfif" alt="Utensilios" class="img-mini">
                 <img src="equipoMenor/menor4.jfif" alt="Utensilios" class="img-mini">
@@ -194,7 +192,7 @@
                 <img src="equipoMenor/menor14.jfif" alt="Utensilios" class="img-mini">
                 
                 <!-- BOTÓN INTEGRADO CON ONCLICK DIRECTO -->
-                 <a href="inventario.php?vista=panel&seccion=Utensilios" class="btn-entrar">ENTRAR AL SISTEMA</a>
+                 <a href="Utensilios.php?seccion=mezcla&amp;herramienta=0" class="btn-entrar">ENTRAR AL SISTEMA</a>
             </div>
         </div>
 
@@ -204,7 +202,6 @@
 
             <!-- Envoltura para el carrusel automático -->
             <div class="visor-mini-carrusel">
-                <img src="equipoMayor/mayor1.jfif" alt="Maquinaria" class="img-mini activa">
                 <img src="equipoMayor/mayor2.jfif" alt="Maquinaria" class="img-mini">
                 <img src="equipoMayor/mayor3.jfif" alt="Maquinaria" class="img-mini">
                 <img src="equipoMayor/mayor4.jfif" alt="Maquinaria" class="img-mini">
@@ -217,7 +214,7 @@
                 <img src="equipoMayor/mayor11.jfif" alt="Maquinaria" class="img-mini">
                 
                 <!-- BOTÓN INTEGRADO CON ONCLICK DIRECTO -->
-                <a href="inventario.php?vista=panel&seccion=Maquinaria" class="btn-entrar">ENTRAR AL SISTEMA</a>
+                <a href="maquinaria.php?seccion=medicion&amp;herramienta=0" class="btn-entrar">ENTRAR AL SISTEMA</a>
             </div>
         </div>
     </div>

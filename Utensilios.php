@@ -48,9 +48,9 @@ $secciones = [
     ],
 ];
 
-$seccionActual = $_GET['seccion'] ?? 'inicio';
+$seccionActual = $_GET['seccion'] ?? 'mezcla';
 if (!is_string($seccionActual) || !isset($secciones[$seccionActual])) {
-    $seccionActual = 'inicio';
+    $seccionActual = 'mezcla';
 }
 $seccion = $secciones[$seccionActual];
 $herramientaSeleccionada = null;
@@ -266,6 +266,93 @@ if (
             font-weight: 700;
         }
 
+        .inventory-status.is-ok {
+            background: #dff3e5;
+            color: #226b38;
+        }
+
+        .inventory-status.is-low {
+            background: #fde4e1;
+            color: #9c2f25;
+        }
+
+        .edit-button,
+        .save-button,
+        .cancel-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 36px;
+            padding: 7px 11px;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .edit-button {
+            background: #e3f2e7;
+            color: #267343;
+        }
+
+        .edit-button:hover,
+        .edit-button:focus-visible {
+            background: #267343;
+            color: #fff;
+        }
+
+        .edit-button svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .save-button {
+            background: #3e2723;
+            color: #fff;
+        }
+
+        .save-button:hover,
+        .save-button:focus-visible {
+            background: #7a442a;
+        }
+
+        .cancel-button {
+            border-color: #d6c6b7;
+            background: #fff;
+            color: #5d4037;
+        }
+
+        .cancel-button:hover,
+        .cancel-button:focus-visible {
+            background: #f5efe7;
+        }
+
+        .edit-field {
+            width: 100%;
+            min-width: 90px;
+            padding: 8px;
+            border: 1px solid #d7b36a;
+            border-radius: 6px;
+            color: #3e2723;
+            font: inherit;
+        }
+
+        .edit-field:focus {
+            outline: 2px solid rgba(215, 179, 106, 0.35);
+        }
+
+        .edit-error {
+            display: none;
+            padding: 12px 0 0;
+            color: #9c2f25;
+            font-weight: 600;
+        }
+
         .empty-search {
             display: none;
             padding: 18px 10px;
@@ -358,7 +445,7 @@ if (
                 <?php foreach ($secciones as $id => $datos): ?>
                     <li>
                         <a
-                            href="Inventario.php?seccion=<?php echo urlencode($id); ?>"
+                            href="Utensilios.php?seccion=<?php echo urlencode($id); ?>"
                             class="<?php echo $id === $seccionActual ? 'active' : ''; ?>"
                             <?php echo $id === $seccionActual ? 'aria-current="page"' : ''; ?>
                         ><?php echo htmlspecialchars($datos['etiqueta'], ENT_QUOTES, 'UTF-8'); ?></a>
@@ -373,7 +460,7 @@ if (
             <div class="stage-tools" aria-label="Herramientas de <?php echo htmlspecialchars($seccion['etiqueta'], ENT_QUOTES, 'UTF-8'); ?>">
                 <?php foreach ($seccion['herramientas'] as $indice => $herramienta): ?>
                     <a
-                        href="Inventario.php?seccion=<?php echo urlencode($seccionActual); ?>&amp;herramienta=<?php echo $indice; ?>"
+                        href="Utensilios.php?seccion=<?php echo urlencode($seccionActual); ?>&amp;herramienta=<?php echo $indice; ?>"
                         <?php echo $herramientaSeleccionada === $indice ? 'aria-current="page"' : ''; ?>
                     ><?php echo htmlspecialchars($herramienta, ENT_QUOTES, 'UTF-8'); ?></a>
                 <?php endforeach; ?>
@@ -403,21 +490,36 @@ if (
                                 <th>Mínimo requerido</th>
                                 <th>Estado</th>
                                 <th>Notas / Ubicación</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-rows">
-                            <tr class="inventory-row">
-                                <td><?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></td>
-                                <td>—</td>
-                                <td>—</td>
+                            <tr
+                                class="inventory-row"
+                                data-storage-key="bakestock-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
+                                data-default-name="<?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
+                            >
+                                <td class="item-name"><?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td class="item-stock">—</td>
+                                <td class="item-minimum">—</td>
                                 <td><span class="inventory-status">Sin registrar</span></td>
-                                <td>Pendiente de registrar existencias</td>
+                                <td class="item-notes">Pendiente de registrar existencias</td>
+                                <td class="item-actions">
+                                    <button class="edit-button" type="button" aria-label="Editar <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.04a1 1 0 0 0 0-1.42l-2.5-2.5a1 1 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 2-1.66z"/></svg>
+                                        <span>Editar</span>
+                                    </button>
+                                    <div class="edit-actions" hidden>
+                                        <button class="save-button" type="button">Guardar</button>
+                                        <button class="cancel-button" type="button">Cancelar</button>
+                                    </div>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                     <p class="empty-search" id="empty-search" role="status">No se encontraron resultados.</p>
+                    <p class="edit-error" id="edit-error" role="alert"></p>
                 </div>
-                <p style="margin-top: 18px;"><a href="Inventario.php?seccion=<?php echo urlencode($seccionActual); ?>">← Volver a <?php echo htmlspecialchars($seccion['etiqueta'], ENT_QUOTES, 'UTF-8'); ?></a></p>
             <?php else: ?>
                 <h1 id="page-title"><?php echo htmlspecialchars($seccion['titulo'], ENT_QUOTES, 'UTF-8'); ?></h1>
                 <p><?php echo htmlspecialchars($seccion['descripcion'], ENT_QUOTES, 'UTF-8'); ?></p>
@@ -427,6 +529,145 @@ if (
     <?php if ($herramientaSeleccionada !== null): ?>
         <script>
             const inventorySearch = document.getElementById('inventory-search');
+            const inventoryRow = document.querySelector('.inventory-row');
+            const editError = document.getElementById('edit-error');
+            const editButton = inventoryRow.querySelector('.edit-button');
+            const editActions = inventoryRow.querySelector('.edit-actions');
+            const itemName = inventoryRow.querySelector('.item-name');
+            const itemStock = inventoryRow.querySelector('.item-stock');
+            const itemMinimum = inventoryRow.querySelector('.item-minimum');
+            const itemNotes = inventoryRow.querySelector('.item-notes');
+            const statusBadge = inventoryRow.querySelector('.inventory-status');
+            let savedItem = null;
+
+            function updateStatus(stock, minimum) {
+                statusBadge.classList.remove('is-ok', 'is-low');
+                if (stock === null || minimum === null) {
+                    statusBadge.textContent = 'Sin registrar';
+                } else if (stock >= minimum) {
+                    statusBadge.textContent = 'OK';
+                    statusBadge.classList.add('is-ok');
+                } else {
+                    statusBadge.textContent = 'Stock bajo';
+                    statusBadge.classList.add('is-low');
+                }
+            }
+
+            function showItem(item) {
+                itemName.textContent = item.name;
+                itemStock.textContent = item.stock === null ? '—' : item.stock;
+                itemMinimum.textContent = item.minimum === null ? '—' : item.minimum;
+                itemNotes.textContent = item.notes || '—';
+                updateStatus(item.stock, item.minimum);
+            }
+
+            try {
+                const storedItem = localStorage.getItem(inventoryRow.dataset.storageKey);
+                if (storedItem !== null) {
+                    const parsedItem = JSON.parse(storedItem);
+                    if (
+                        typeof parsedItem.name !== 'string'
+                        || (parsedItem.stock !== null && !Number.isInteger(parsedItem.stock))
+                        || (parsedItem.minimum !== null && !Number.isInteger(parsedItem.minimum))
+                        || typeof parsedItem.notes !== 'string'
+                    ) {
+                        throw new Error('Los datos guardados para este artículo no son válidos.');
+                    }
+                    savedItem = parsedItem;
+                    showItem(savedItem);
+                }
+            } catch (error) {
+                console.error('No se pudieron cargar los datos guardados del inventario.', error);
+                editError.textContent = 'No se pudieron cargar los datos guardados. Revisa el almacenamiento del navegador.';
+                editError.style.display = 'block';
+            }
+
+            function setEditing(isEditing) {
+                editButton.hidden = isEditing;
+                editActions.hidden = !isEditing;
+                inventoryRow.querySelectorAll('.editable-value').forEach((field) => {
+                    const cell = field.closest('td');
+                    if (cell) cell.textContent = field.value;
+                });
+            }
+
+            editButton.addEventListener('click', () => {
+                editError.style.display = 'none';
+                const current = savedItem || {
+                    name: itemName.textContent,
+                    stock: '',
+                    minimum: '',
+                    notes: ''
+                };
+                itemName.innerHTML = '';
+                itemStock.innerHTML = '';
+                itemMinimum.innerHTML = '';
+                itemNotes.innerHTML = '';
+
+                const fields = [
+                    [itemName, 'name', current.name, 'text'],
+                    [itemStock, 'stock', current.stock ?? '', 'number'],
+                    [itemMinimum, 'minimum', current.minimum ?? '', 'number'],
+                    [itemNotes, 'notes', current.notes, 'text']
+                ];
+                fields.forEach(([cell, name, value, type]) => {
+                    const input = document.createElement('input');
+                    input.className = 'edit-field editable-value';
+                    input.name = name;
+                    input.type = type;
+                    input.value = value;
+                    if (type === 'number') {
+                        input.min = '0';
+                        input.step = '1';
+                        input.placeholder = '0';
+                    }
+                    cell.replaceChildren(input);
+                });
+                setEditing(true);
+                inventoryRow.querySelector('[name="name"]').focus();
+            });
+
+            inventoryRow.querySelector('.save-button').addEventListener('click', () => {
+                const name = inventoryRow.querySelector('[name="name"]').value.trim();
+                const stockValue = inventoryRow.querySelector('[name="stock"]').value;
+                const minimumValue = inventoryRow.querySelector('[name="minimum"]').value;
+                const notes = inventoryRow.querySelector('[name="notes"]').value.trim();
+                const stock = stockValue === '' ? null : Number(stockValue);
+                const minimum = minimumValue === '' ? null : Number(minimumValue);
+
+                if (!name || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
+                    editError.textContent = 'Escribe un nombre y cantidades enteras iguales o mayores que cero.';
+                    editError.style.display = 'block';
+                    return;
+                }
+
+                const updatedItem = { name, stock, minimum, notes };
+                try {
+                    localStorage.setItem(inventoryRow.dataset.storageKey, JSON.stringify(updatedItem));
+                } catch (error) {
+                    console.error('No se pudieron guardar los cambios del inventario.', error);
+                    editError.textContent = 'No se pudieron guardar los cambios en este navegador.';
+                    editError.style.display = 'block';
+                    return;
+                }
+
+                savedItem = updatedItem;
+                showItem(savedItem);
+                editError.style.display = 'none';
+                setEditing(false);
+            });
+
+            inventoryRow.querySelector('.cancel-button').addEventListener('click', () => {
+                showItem(savedItem || {
+                    name: inventoryRow.dataset.defaultName,
+                    stock: null,
+                    minimum: null,
+                    notes: 'Pendiente de registrar existencias'
+                });
+                editError.style.display = 'none';
+                setEditing(false);
+            });
+
             inventorySearch.addEventListener('input', () => {
                 const query = inventorySearch.value.trim().toLocaleLowerCase();
                 let visibleRows = 0;
