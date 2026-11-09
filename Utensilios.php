@@ -592,7 +592,6 @@ if (
                                 <th>Nombre del artículo</th>
                                 <th>Cantidad total</th>
                                 <th>Cantidad actual</th>
-                                <th>Unidad de medida</th>
                                 <th>Notas / Ubicación</th>
                             </tr>
                         </thead>
@@ -609,7 +608,6 @@ if (
                                 <td class="item-name"><?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></td>
                                 <td class="item-stock">—</td>
                                 <td class="item-minimum">—</td>
-                                <td class="item-unit">Piezas (pz)</td>
                                 <td class="item-notes">Pendiente de registrar existencias</td>
                             </tr>
                         </tbody>
@@ -633,18 +631,7 @@ if (
             const itemStock = inventoryRow.querySelector('.item-stock');
             const itemMinimum = inventoryRow.querySelector('.item-minimum');
             const itemNotes = inventoryRow.querySelector('.item-notes');
-            const itemUnit = inventoryRow.querySelector('.item-unit');
             let savedItem = null;
-            const measureUnits = [
-                'Gramos (g)',
-                'Kilogramos (kg)',
-                'Libras (lb)',
-                'Onzas (oz)',
-                'Mililitros (ml)',
-                'Litros (L)',
-                'Piezas (pz)'
-            ];
-            const defaultMeasureUnit = 'Piezas (pz)';
             const deleteButton = document.getElementById('btn-eliminar-seleccion');
             const cancelDeleteButton = document.getElementById('cancelar-eliminacion');
             const inventoryTable = document.querySelector('.inventory-table');
@@ -708,7 +695,6 @@ if (
                 itemName.textContent = item.name;
                 itemStock.textContent = item.stock === null ? '—' : item.stock;
                 itemMinimum.textContent = item.minimum === null ? '—' : item.minimum;
-                itemUnit.textContent = item.unit;
                 itemNotes.textContent = item.notes || '—';
             }
 
@@ -728,11 +714,9 @@ if (
                             || (parsedItem.stock !== null && !Number.isInteger(parsedItem.stock))
                             || (parsedItem.minimum !== null && !Number.isInteger(parsedItem.minimum))
                             || typeof parsedItem.notes !== 'string'
-                            || (parsedItem.unit !== undefined && !measureUnits.includes(parsedItem.unit))
                         ) {
                             throw new Error('Los datos guardados para este artículo no son válidos.');
                         }
-                        parsedItem.unit = parsedItem.unit || defaultMeasureUnit;
                         savedItem = parsedItem;
                         showItem(savedItem);
                     }
@@ -758,7 +742,6 @@ if (
                     itemName.textContent = inventoryRow.dataset.defaultName;
                     itemStock.textContent = '—';
                     itemMinimum.textContent = '—';
-                    itemUnit.textContent = defaultMeasureUnit;
                     itemNotes.textContent = 'Pendiente de registrar existencias';
                     inventoryRow.hidden = false;
                     itemDeleted = false;
@@ -794,17 +777,6 @@ if (
                     }
                     cell.replaceChildren(input);
                 });
-                const unitSelect = document.createElement('select');
-                unitSelect.className = 'edit-field editable-value';
-                unitSelect.name = 'unit';
-                measureUnits.forEach((unit) => {
-                    const option = document.createElement('option');
-                    option.value = unit;
-                    option.textContent = unit;
-                    unitSelect.append(option);
-                });
-                unitSelect.value = measureUnits.includes(current.unit) ? current.unit : defaultMeasureUnit;
-                itemUnit.replaceChildren(unitSelect);
                 setEditing(true);
                 inventoryRow.querySelector('[name="name"]').focus();
             }
@@ -813,19 +785,18 @@ if (
                 const name = inventoryRow.querySelector('[name="name"]').value.trim();
                 const stockValue = inventoryRow.querySelector('[name="stock"]').value;
                 const minimumValue = inventoryRow.querySelector('[name="minimum"]').value;
-                const unit = inventoryRow.querySelector('[name="unit"]').value;
                 const notes = inventoryRow.querySelector('[name="notes"]').value.trim();
                 const stock = stockValue === '' ? null : Number(stockValue);
                 const minimum = minimumValue === '' ? null : Number(minimumValue);
 
-                if (!name || !measureUnits.includes(unit) || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
-                    editError.textContent = 'Escribe un nombre, selecciona una unidad y usa cantidades enteras iguales o mayores que cero.';
+                if (!name || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
+                    editError.textContent = 'Escribe un nombre y cantidades enteras iguales o mayores que cero.';
                     editError.style.display = 'block';
                     editModeToggle.checked = true;
                     return false;
                 }
 
-                const updatedItem = { name, stock, minimum, unit, notes };
+                const updatedItem = { name, stock, minimum, notes };
                 try {
                     localStorage.setItem(inventoryRow.dataset.storageKey, JSON.stringify(updatedItem));
                     localStorage.removeItem(inventoryRow.dataset.deletedKey);
