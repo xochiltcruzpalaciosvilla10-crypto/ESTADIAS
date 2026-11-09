@@ -5,7 +5,7 @@ $secciones = [
         'titulo' => 'Bienvenido al panel principal',
         'descripcion' => 'Selecciona una etapa del proceso de panadería en el menú para consultar su información.',
     ],
-    'medicion' => [
+    'amasado' => [
         'etiqueta' => 'Equipo de Mezclado y amasado',
         'titulo' => 'Equipo de Mezclado y amasado',
         'descripcion' => 'Etapa 1: donde puedes preparar la masa y darle forma.',
@@ -15,7 +15,7 @@ $secciones = [
             'Batidoras planetarias',
         ],
     ],
-    'mezcla' => [
+    'proporción' => [
         'etiqueta' => 'Equipo de porcionado y espirado',
         'titulo' => 'Equipo de porcionado y espirado',
         'descripcion' => 'Etapa 2: integra los ingredientes y prepara la masa de acuerdo con el producto que vas a elaborar.',
@@ -25,7 +25,7 @@ $secciones = [
             'Laminadoras de bandas y motorizadas',
         ],
     ],
-    'corte' => [
+    'formado' => [
         'etiqueta' => 'Equipo de formado y moldeo',
         'titulo' => 'Equipo de formado y moldeo',
         'descripcion' => 'Etapa 3: hornea, hace que el producto este cosido.',
@@ -54,7 +54,7 @@ $secciones = [
             'Hornos de convección',
         ],
     ],
-    'frio' => [
+    'gestion' => [
         'etiqueta' => 'Gestión de cadena de frío',
         'titulo' => 'Gestión de cadena de frío',
         'descripcion' => 'Etapa 4: donde puedo dejar el producto no cosido o cosido.',
@@ -75,9 +75,9 @@ $secciones = [
     ],
 ];
 
-$seccionActual = $_GET['seccion'] ?? 'medicion';
+$seccionActual = $_GET['seccion'] ?? 'amasado';
 if (!is_string($seccionActual) || !isset($secciones[$seccionActual])) {
-    $seccionActual = 'medicion';
+    $seccionActual = 'amasado';
 }
 $seccion = $secciones[$seccionActual];
 $herramientaSeleccionada = null;
@@ -159,6 +159,38 @@ if (
             outline: none;
         }
 
+        .btn-regresar {
+            position: fixed;
+            bottom: 18px;
+            left: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            color: #d7ccc8;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .btn-regresar:hover,
+        .btn-regresar:focus-visible {
+            background: #4e342e;
+            color: #ffb74d;
+            outline: 2px solid #ffb74d;
+            outline-offset: 2px;
+        }
+
+        .btn-regresar svg {
+            width: 32px;
+            height: 32px;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 2;
+        }
+
         .main-content {
             width: calc(100% - 260px);
             margin-left: 260px;
@@ -226,6 +258,17 @@ if (
             font-size: clamp(1.5rem, 3vw, 2rem);
         }
 
+        .inventory-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .inventory-actions [hidden] {
+            display: none !important;
+        }
+
         .print-button {
             padding: 10px 16px;
             border: 0;
@@ -242,14 +285,73 @@ if (
             background: #7a442a;
         }
 
-        .inventory-search {
-            width: 100%;
+        .search-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             margin-bottom: 20px;
+        }
+
+        .inventory-search {
+            flex: 1;
+            min-width: 0;
+            margin-bottom: 0;
             padding: 13px 18px;
             border: 2px solid #d7b36a;
             border-radius: 25px;
             color: #3e2723;
             font: inherit;
+        }
+
+        .edit-mode-control {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 8px;
+            color: #5d4037;
+            font-size: 0.9rem;
+            font-weight: 700;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .edit-mode-toggle {
+            position: relative;
+            width: 40px;
+            height: 23px;
+            margin: 0;
+            border: 1px solid #a99a8a;
+            border-radius: 999px;
+            appearance: none;
+            background: #d7ccc8;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .edit-mode-toggle::before {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            background: #fff;
+            content: "";
+            transition: transform 0.2s ease;
+        }
+
+        .edit-mode-toggle:checked {
+            border-color: #267343;
+            background: #267343;
+        }
+
+        .edit-mode-toggle:checked::before {
+            transform: translateX(17px);
+        }
+
+        .edit-mode-toggle:focus-visible {
+            outline: 3px solid rgba(38, 115, 67, 0.3);
+            outline-offset: 2px;
         }
 
         .inventory-table-wrap {
@@ -285,28 +387,6 @@ if (
             color: #3e2723;
         }
 
-        .inventory-status {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: #fff0cf;
-            color: #79551a;
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-
-        .inventory-status.is-ok {
-            background: #dff3e5;
-            color: #226b38;
-        }
-
-        .inventory-status.is-low {
-            background: #fde4e1;
-            color: #9c2f25;
-        }
-
-        .edit-button,
-        .save-button,
         .cancel-button {
             display: inline-flex;
             align-items: center;
@@ -321,33 +401,6 @@ if (
             font-weight: 700;
             cursor: pointer;
             transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .edit-button {
-            background: #e3f2e7;
-            color: #267343;
-        }
-
-        .edit-button:hover,
-        .edit-button:focus-visible {
-            background: #267343;
-            color: #fff;
-        }
-
-        .edit-button svg {
-            width: 16px;
-            height: 16px;
-            fill: currentColor;
-        }
-
-        .save-button {
-            background: #3e2723;
-            color: #fff;
-        }
-
-        .save-button:hover,
-        .save-button:focus-visible {
-            background: #7a442a;
         }
 
         .cancel-button {
@@ -446,8 +499,9 @@ if (
         @media print {
             .sidebar,
             .stage-tools,
-            .inventory-search,
-            .print-button {
+            .search-controls,
+            .print-button,
+            .delete-button {
                 display: none !important;
             }
 
@@ -462,19 +516,52 @@ if (
                 box-shadow: none;
             }
         }
+
+        .delete-button {
+            border: 0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            background: #d9534f;
+            color: #fff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .delete-button:hover,
+        .delete-button:focus-visible {
+            background: #c9302c;
+        }
+
+        .delete-button:active {
+            transform: scale(0.98);
+        }
+
+        .row-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #e07a5f;
+        }
+
+        .inventory-table:not(.is-selecting) .selection-column {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <aside class="sidebar">
+     <aside class="sidebar">
         <div class="sidebar-header">
             <h2>🥖 BakeStock</h2>
         </div>
         <nav aria-label="Menú principal">
             <ul class="sidebar-menu">
                 <?php foreach ($secciones as $id => $datos): ?>
-                    <li>
+                     <li>
+                        <!-- Cambiado a maquinaria.php con la herramienta=0 fija -->
                         <a
-                            href="maquinaria.php?seccion=<?php echo urlencode($id); ?>"
+                            href="maquinaria.php?seccion=<?php echo urlencode($id); ?>&amp;herramienta=0"
                             class="<?php echo $id === $seccionActual ? 'active' : ''; ?>"
                             <?php echo $id === $seccionActual ? 'aria-current="page"' : ''; ?>
                         ><?php echo htmlspecialchars($datos['etiqueta'], ENT_QUOTES, 'UTF-8'); ?></a>
@@ -482,12 +569,18 @@ if (
                 <?php endforeach; ?>
             </ul>
         </nav>
+        <a class="btn-regresar" href="clasificacion.php" aria-label="Regresar a clasificación" title="Regresar a clasificación">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 12H5M12 19l-7-7 7-7"></path>
+            </svg>
+        </a>
     </aside>
 
     <main class="main-content">
         <?php if (!empty($seccion['herramientas'])): ?>
             <div class="stage-tools" aria-label="Herramientas de <?php echo htmlspecialchars($seccion['etiqueta'], ENT_QUOTES, 'UTF-8'); ?>">
                 <?php foreach ($seccion['herramientas'] as $indice => $herramienta): ?>
+                    <!-- Cambiado también aquí abajo para mantener la navegación en maquinaria.php -->
                     <a
                         href="maquinaria.php?seccion=<?php echo urlencode($seccionActual); ?>&amp;herramienta=<?php echo $indice; ?>"
                         <?php echo $herramientaSeleccionada === $indice ? 'aria-current="page"' : ''; ?>
@@ -499,50 +592,57 @@ if (
             <?php if ($herramientaSeleccionada !== null): ?>
                 <?php $nombreHerramienta = $seccion['herramientas'][$herramientaSeleccionada]; ?>
                 <div class="inventory-heading">
+                    <div class="inventory-actions">
+                        <button class="delete-button" type="button" id="btn-eliminar-seleccion">
+                            🗑️ Eliminar
+                        </button>
+                        <button class="cancel-button" type="button" id="cancelar-eliminacion" hidden>
+                            Cancelar
+                        </button>
+                    </div>
                     <h1 id="page-title">Control de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h1>
                     <button class="print-button" type="button" onclick="window.print()">🖨️ Imprimir hoja</button>
                 </div>
-                <input
-                    class="inventory-search"
-                    id="inventory-search"
-                    type="search"
-                    placeholder="🔍 Escribe para buscar en <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>..."
-                    aria-label="Buscar en el inventario de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
-                >
+                <div class="search-controls">
+                    <input
+                        class="inventory-search"
+                        id="inventory-search"
+                        type="search"
+                        placeholder="🔍 Escribe para buscar en <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>..."
+                        aria-label="Buscar en el inventario de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
+                    >
+                    <label class="edit-mode-control" for="edit-mode-toggle">
+                        <span>Modo edición</span>
+                        <input class="edit-mode-toggle" id="edit-mode-toggle" type="checkbox" role="switch" aria-label="Activar modo de edición">
+                    </label>
+                </div>
                 <div class="inventory-table-wrap">
                     <h2>Listado activo de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h2>
                     <table class="inventory-table">
                         <thead>
                             <tr>
+                                <th class="selection-column" style="width: 40px; text-align: center;"></th>
                                 <th>Nombre del artículo</th>
-                                <th>Cantidad requerido</th>
+                                <th>Cantidad total</th>
                                 <th>Cantidad actual</th>
-                                <th>Unidad de medida</th>
                                 <th>Notas_ubicación</th>
-                                <th>Última actualización</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-rows">
                             <tr
                                 class="inventory-row"
                                 data-storage-key="bakestock-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
+                                data-deleted-key="bakestock-eliminado-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
                                 data-default-name="<?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
                             >
+                             <!-- 2. AQUÍ QUEDA LA CASILLA INDIVIDUAL PARA ESTA FILA -->
+                                <td class="selection-column" style="text-align: center; vertical-align: middle;">
+                                    <input type="checkbox" class="row-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+                                </td>
                                 <td class="item-name"><?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></td>
                                 <td class="item-stock">—</td>
                                 <td class="item-minimum">—</td>
-                                <td><span class="inventory-status">Sin registrar</span></td>
                                 <td class="item-notes">Pendiente de registrar existencias</td>
-                                <td class="item-actions">
-                                    <button class="edit-button" type="button" aria-label="Editar <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.04a1 1 0 0 0 0-1.42l-2.5-2.5a1 1 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 2-1.66z"/></svg>
-                                        <span>Editar</span>
-                                    </button>
-                                    <div class="edit-actions" hidden>
-                                        <button class="save-button" type="button">Guardar</button>
-                                        <button class="cancel-button" type="button">Cancelar</button>
-                                    </div>
-                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -560,50 +660,116 @@ if (
             const inventorySearch = document.getElementById('inventory-search');
             const inventoryRow = document.querySelector('.inventory-row');
             const editError = document.getElementById('edit-error');
-            const editButton = inventoryRow.querySelector('.edit-button');
-            const editActions = inventoryRow.querySelector('.edit-actions');
+            const editModeToggle = document.getElementById('edit-mode-toggle');
             const itemName = inventoryRow.querySelector('.item-name');
             const itemStock = inventoryRow.querySelector('.item-stock');
             const itemMinimum = inventoryRow.querySelector('.item-minimum');
             const itemNotes = inventoryRow.querySelector('.item-notes');
-            const statusBadge = inventoryRow.querySelector('.inventory-status');
             let savedItem = null;
 
-            function updateStatus(stock, minimum) {
-                statusBadge.classList.remove('is-ok', 'is-low');
-                if (stock === null || minimum === null) {
-                    statusBadge.textContent = 'Sin registrar';
-                } else if (stock >= minimum) {
-                    statusBadge.textContent = 'OK';
-                    statusBadge.classList.add('is-ok');
-                } else {
-                    statusBadge.textContent = 'Stock bajo';
-                    statusBadge.classList.add('is-low');
+            // ========================================================
+            // EL CÓDIGO DE LAS CASILLAS Y ELIMINAR VA AQUÍ MISMO:
+            // ========================================================
+            const btnEliminar = document.getElementById('btn-eliminar-seleccion');
+            const cancelarEliminacion = document.getElementById('cancelar-eliminacion');
+            const inventoryTable = document.querySelector('.inventory-table');
+            let modoSeleccion = false;
+            let itemDeleted = false;
+
+            function setSelectionMode(enabled) {
+                modoSeleccion = enabled;
+                inventoryTable.classList.toggle('is-selecting', enabled);
+                btnEliminar.textContent = enabled ? '🗑️ Eliminar seleccionados' : '🗑️ Eliminar';
+                cancelarEliminacion.hidden = !enabled;
+                if (!enabled) {
+                    document.querySelectorAll('.row-checkbox').forEach((checkbox) => {
+                        checkbox.checked = false;
+                    });
                 }
             }
+
+            if (btnEliminar) {
+                btnEliminar.addEventListener('click', () => {
+                    if (!modoSeleccion) {
+                        setSelectionMode(true);
+                        return;
+                    }
+
+                    const seleccionados = document.querySelectorAll('.row-checkbox:checked');
+                    if (seleccionados.length === 0) {
+                        alert('Por favor, selecciona primero las casillas de los artículos que quieres borrar.');
+                        return;
+                    }
+                    if (!confirm(`¿Estás seguro de que quieres eliminar las ${seleccionados.length} filas seleccionadas?`)) {
+                        setSelectionMode(false);
+                        return;
+                    }
+                    let eliminados = 0;
+                    seleccionados.forEach((checkbox) => {
+                        const fila = checkbox.closest('.inventory-row');
+                        if (!fila) return;
+
+                        try {
+                            localStorage.setItem(fila.dataset.deletedKey, 'true');
+                            localStorage.removeItem(fila.dataset.storageKey);
+                            if (fila === inventoryRow) {
+                                savedItem = null;
+                                itemDeleted = true;
+                            }
+                            fila.remove();
+                            eliminados++;
+                        } catch (error) {
+                            console.error('No se pudo eliminar el artículo del inventario.', error);
+                            editError.textContent = 'No se pudo eliminar el artículo guardado en este navegador.';
+                            editError.style.display = 'block';
+                        }
+                    });
+                    if (eliminados > 0) {
+                        editError.textContent = '';
+                        editError.style.display = 'none';
+                        setSelectionMode(false);
+                        if (document.querySelectorAll('.inventory-row').length === 0) {
+                            document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
+                            document.getElementById('empty-search').style.display = 'block';
+                            btnEliminar.disabled = true;
+                        }
+                    }
+                });
+            }
+
+            cancelarEliminacion.addEventListener('click', () => {
+                setSelectionMode(false);
+            });
 
             function showItem(item) {
                 itemName.textContent = item.name;
                 itemStock.textContent = item.stock === null ? '—' : item.stock;
                 itemMinimum.textContent = item.minimum === null ? '—' : item.minimum;
                 itemNotes.textContent = item.notes || '—';
-                updateStatus(item.stock, item.minimum);
             }
 
             try {
-                const storedItem = localStorage.getItem(inventoryRow.dataset.storageKey);
-                if (storedItem !== null) {
-                    const parsedItem = JSON.parse(storedItem);
-                    if (
-                        typeof parsedItem.name !== 'string'
-                        || (parsedItem.stock !== null && !Number.isInteger(parsedItem.stock))
-                        || (parsedItem.minimum !== null && !Number.isInteger(parsedItem.minimum))
-                        || typeof parsedItem.notes !== 'string'
-                    ) {
-                        throw new Error('Los datos guardados para este artículo no son válidos.');
+                if (localStorage.getItem(inventoryRow.dataset.deletedKey) === 'true') {
+                    inventoryRow.remove();
+                    document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
+                    document.getElementById('empty-search').style.display = 'block';
+                    itemDeleted = true;
+                    btnEliminar.disabled = true;
+                } else {
+                    const storedItem = localStorage.getItem(inventoryRow.dataset.storageKey);
+                    if (storedItem !== null) {
+                        const parsedItem = JSON.parse(storedItem);
+                        if (
+                            typeof parsedItem.name !== 'string'
+                            || (parsedItem.stock !== null && !Number.isInteger(parsedItem.stock))
+                            || (parsedItem.minimum !== null && !Number.isInteger(parsedItem.minimum))
+                            || typeof parsedItem.notes !== 'string'
+                        ) {
+                            throw new Error('Los datos guardados para este artículo no son válidos.');
+                        }
+                        savedItem = parsedItem;
+                        showItem(savedItem);
                     }
-                    savedItem = parsedItem;
-                    showItem(savedItem);
                 }
             } catch (error) {
                 console.error('No se pudieron cargar los datos guardados del inventario.', error);
@@ -612,16 +778,25 @@ if (
             }
 
             function setEditing(isEditing) {
-                editButton.hidden = isEditing;
-                editActions.hidden = !isEditing;
-                inventoryRow.querySelectorAll('.editable-value').forEach((field) => {
-                    const cell = field.closest('td');
-                    if (cell) cell.textContent = field.value;
-                });
+                editModeToggle.checked = isEditing;
+                btnEliminar.disabled = isEditing || itemDeleted;
+                if (isEditing) {
+                    setSelectionMode(false);
+                }
             }
 
-            editButton.addEventListener('click', () => {
+            function startEditing() {
                 editError.style.display = 'none';
+                if (itemDeleted) {
+                    document.getElementById('inventory-rows').append(inventoryRow);
+                    itemName.textContent = inventoryRow.dataset.defaultName;
+                    itemStock.textContent = '—';
+                    itemMinimum.textContent = '—';
+                    itemNotes.textContent = 'Pendiente de registrar existencias';
+                    inventoryRow.hidden = false;
+                    itemDeleted = false;
+                    document.getElementById('empty-search').style.display = 'none';
+                }
                 const current = savedItem || {
                     name: itemName.textContent,
                     stock: '',
@@ -654,9 +829,9 @@ if (
                 });
                 setEditing(true);
                 inventoryRow.querySelector('[name="name"]').focus();
-            });
+            }
 
-            inventoryRow.querySelector('.save-button').addEventListener('click', () => {
+            function saveEditing() {
                 const name = inventoryRow.querySelector('[name="name"]').value.trim();
                 const stockValue = inventoryRow.querySelector('[name="stock"]').value;
                 const minimumValue = inventoryRow.querySelector('[name="minimum"]').value;
@@ -667,34 +842,35 @@ if (
                 if (!name || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
                     editError.textContent = 'Escribe un nombre y cantidades enteras iguales o mayores que cero.';
                     editError.style.display = 'block';
-                    return;
+                    editModeToggle.checked = true;
+                    return false;
                 }
 
                 const updatedItem = { name, stock, minimum, notes };
                 try {
                     localStorage.setItem(inventoryRow.dataset.storageKey, JSON.stringify(updatedItem));
+                    localStorage.removeItem(inventoryRow.dataset.deletedKey);
                 } catch (error) {
                     console.error('No se pudieron guardar los cambios del inventario.', error);
                     editError.textContent = 'No se pudieron guardar los cambios en este navegador.';
                     editError.style.display = 'block';
-                    return;
+                    editModeToggle.checked = true;
+                    return false;
                 }
 
                 savedItem = updatedItem;
                 showItem(savedItem);
                 editError.style.display = 'none';
                 setEditing(false);
-            });
+                return true;
+            }
 
-            inventoryRow.querySelector('.cancel-button').addEventListener('click', () => {
-                showItem(savedItem || {
-                    name: inventoryRow.dataset.defaultName,
-                    stock: null,
-                    minimum: null,
-                    notes: 'Pendiente de registrar existencias'
-                });
-                editError.style.display = 'none';
-                setEditing(false);
+            editModeToggle.addEventListener('change', () => {
+                if (editModeToggle.checked) {
+                    startEditing();
+                } else {
+                    saveEditing();
+                }
             });
 
             inventorySearch.addEventListener('input', () => {
