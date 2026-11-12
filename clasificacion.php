@@ -7,7 +7,6 @@
     <title>Panel</title>
     <style>
         /* 1. Obligamos a la página a medir el 100% de la ventana sin barras de scroll innecesarias */
-        /* pero no*/
         html, body {
             margin: 0;
             padding: 0;
