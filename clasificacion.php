@@ -1,3 +1,4 @@
+/*checa si, si agarra*/
 <!DOCTYPE html>
 <html lang="es">
 <head>
