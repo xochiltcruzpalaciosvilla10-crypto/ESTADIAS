@@ -113,10 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         $input = json_decode(file_get_contents('php://input'), true);
         
                // Consulta preparada apuntando a inventario_insumos con la unidad_medida
-        $stmt = $pdo->prepare("INSERT INTO inventario_insumos (storage_key, nombre_articulo, stock_actual, minimo_requerido, unidad_medida, notas) 
-                                VALUES (:key, :nombre, :stock, :minimo, :unidad, :notas)
+        $stmt = $pdo->prepare("INSERT INTO inventario_insumos (storage_key, nombre_articulo, stock_actual, minimo_requerido, unidad_medida, notas, fecha_registro)
+                                VALUES (:key, :nombre, :stock, :minimo, :unidad, :notas, :fecha)
                                 ON DUPLICATE KEY UPDATE 
-                                nombre_articulo = :nombre, stock_actual = :stock, minimo_requerido = :minimo, unidad_medida = :unidad, notas = :notas");
+                                nombre_articulo = :nombre, stock_actual = :stock, minimo_requerido = :minimo, unidad_medida = :unidad, notas = :notas, fecha_registro = :fecha");
         
         $stmt->execute([
             ':key'    => $input['storage_key'],
@@ -124,7 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             ':stock'  => $input['stock'],
             ':minimo' => $input['minimum'],
             ':unidad' => $input['unidad'],
-            ':notas'  => $input['notes']
+            ':notas'  => $input['notes'],
+            ':fecha'  => $input['fFecha_registro']
         ]);
         
         echo json_encode(['status' => 'success']);
@@ -136,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
 }
 
 // 4. CONSULTA DE DATOS DESDE LA TABLA: inventario_insumos
-$db_item = ['stock' => null, 'minimum' => null, 'unidad' => 'Piezas', 'notes' => 'Pendiente de registrar existencias'];
+$db_item = ['stock' => null, 'minimum' => null, 'unidad' => 'Piezas', 'notes' => 'Pendiente de registrar existencias', 'fecha' => ''];
 if ($herramientaSeleccionada !== null) {
     $current_key = "bakestock-{$seccionActual}-{$herramientaSeleccionada}";
     $stmt = $pdo->prepare("SELECT * FROM inventario_insumos WHERE storage_key = ?");
@@ -147,6 +148,7 @@ if ($herramientaSeleccionada !== null) {
         $db_item['minimum'] = $resultado['minimo_requerido'];
         $db_item['unidad'] = $resultado['unidad_medida'];
         $db_item['notes'] = $resultado['notes'];
+        $db_item['fecha'] = $resultado['fecha_registro'] ? substr($resultado['fecha_registro'], 0, 10) : '';
     }
 }
 ?>
@@ -362,6 +364,12 @@ if ($herramientaSeleccionada !== null) {
         .print-button:hover,
         .print-button:focus-visible {
             background: #7a442a;
+        }
+
+        .add-item-link {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
         }
 
         .search-controls {
@@ -588,6 +596,8 @@ if ($herramientaSeleccionada !== null) {
         </div>
         <nav aria-label="Menú principal">
             <ul class="sidebar-menu">
+                <!-- Busca algo muy similar a esto en tu archivo insumos.php -->
+
                 <?php foreach ($secciones as $id => $datos): ?>
                      <li>
                         <!-- Forzamos de forma directa la redirección a la herramienta 0 -->
@@ -634,10 +644,15 @@ if ($herramientaSeleccionada !== null) {
                     <input
                         class="inventory-search"
                         id="inventory-search"
+                        
                         type="search"
                         placeholder="🔍 Escribe para buscar en <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>..."
                         aria-label="Buscar en el inventario de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
                     >
+                    <a
+                        class="print-button add-item-link"
+                        href="anadir.php?seccion=<?php echo rawurlencode($seccionActual); ?>&amp;herramienta=<?php echo $herramientaSeleccionada; ?>"
+                    >➕ Agregar artículo</a>
                     <label class="edit-mode-control" for="edit-mode-toggle">
                         <span>Modo edición</span>
                         <input class="edit-mode-toggle" id="edit-mode-toggle" type="checkbox" role="switch" aria-label="Activar modo de edición">
@@ -654,14 +669,20 @@ if ($herramientaSeleccionada !== null) {
                                 <th>Cantidad actual</th>
                                 <th>Unidad_medida</th>
                                 <th>Notas</th>
+                                <th>Fecha de Registro</th>
                             </tr>
                         </thead>
-                        <tbody id="inventory-rows">
+                        <tbody
+                            id="inventory-rows"
+                            data-list-key="bakestock-listado-insumos-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
+                            data-has-unit="true"
+                        >
                             <tr
                                 class="inventory-row"
                                 data-storage-key="bakestock-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
                                 data-deleted-key="bakestock-eliminado-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
                                 data-default-name="<?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-registration-date="<?php echo htmlspecialchars($db_item['fecha'], ENT_QUOTES, 'UTF-8'); ?>"
                             >
                                 <td class="selection-column" style="text-align: center;">
                                     <input type="checkbox" class="row-checkbox" aria-label="Seleccionar <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>">
@@ -671,6 +692,7 @@ if ($herramientaSeleccionada !== null) {
                                 <td class="item-minimum">—</td>
                                 <td class="item-unit">Piezas (pz)</td>
                                 <td class="item-notes">Pendiente de registrar existencias</td>
+                                <td class="item-date">—</td>
                             </tr>
                         </tbody>
                     </table>
@@ -682,6 +704,7 @@ if ($herramientaSeleccionada !== null) {
         </section>
     </main>
     <?php if ($herramientaSeleccionada !== null): ?>
+        <script src="inventario-listado.js"></script>
         <script>
             const inventorySearch = document.getElementById('inventory-search');
             const inventoryRow = document.querySelector('.inventory-row');
@@ -692,7 +715,12 @@ if ($herramientaSeleccionada !== null) {
             const itemMinimum = inventoryRow.querySelector('.item-minimum');
             const itemNotes = inventoryRow.querySelector('.item-notes');
             const itemUnit = inventoryRow.querySelector('.item-unit');
+            const itemDate = inventoryRow.querySelector('.item-date');
             let savedItem = null;
+            const today = () => {
+                const now = new Date();
+                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            };
             const measureUnits = [
                 'Gramos (g)',
                 'Kilogramos (kg)',
@@ -706,7 +734,6 @@ if ($herramientaSeleccionada !== null) {
             const deleteButton = document.getElementById('btn-eliminar-seleccion');
             const cancelDeleteButton = document.getElementById('cancelar-eliminacion');
             const inventoryTable = document.querySelector('.inventory-table');
-            const rowCheckbox = inventoryRow.querySelector('.row-checkbox');
             let itemDeleted = false;
             let selectionMode = false;
 
@@ -717,7 +744,9 @@ if ($herramientaSeleccionada !== null) {
                 cancelDeleteButton.hidden = !enabled;
                 editModeToggle.disabled = enabled || itemDeleted;
                 if (!enabled) {
-                    rowCheckbox.checked = false;
+                    document.querySelectorAll('.row-checkbox').forEach((checkbox) => {
+                        checkbox.checked = false;
+                    });
                 }
             }
 
@@ -726,25 +755,38 @@ if ($herramientaSeleccionada !== null) {
                     setSelectionMode(true);
                     return;
                 }
-                if (!rowCheckbox.checked) {
-                    alert('Selecciona la casilla del artículo que quieres eliminar.');
+                const selectedRows = document.querySelectorAll('.row-checkbox:checked');
+                if (selectedRows.length === 0) {
+                    alert('Selecciona primero las casillas de los artículos que quieres eliminar.');
                     return;
                 }
-                if (!confirm(`¿Seguro que quieres eliminar "${itemName.textContent}" del inventario?`)) {
+                if (!confirm(`¿Seguro que quieres eliminar los ${selectedRows.length} artículos seleccionados?`)) {
                     setSelectionMode(false);
                     return;
                 }
 
                 try {
-                    localStorage.setItem(inventoryRow.dataset.deletedKey, 'true');
-                    localStorage.removeItem(inventoryRow.dataset.storageKey);
-                    inventoryRow.remove();
-                    savedItem = null;
-                    itemDeleted = true;
-                    document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
-                    document.getElementById('empty-search').style.display = 'block';
+                    selectedRows.forEach((checkbox) => {
+                        const row = checkbox.closest('.inventory-row');
+                        if (!row) return;
+                        localStorage.setItem(row.dataset.deletedKey, 'true');
+                        localStorage.removeItem(row.dataset.storageKey);
+                        if (row.dataset.listId && window.BakeStockAddedItems) {
+                            window.BakeStockAddedItems.remove(row);
+                        }
+                        if (row === inventoryRow) {
+                            savedItem = null;
+                            itemDeleted = true;
+                        }
+                        row.remove();
+                    });
                     setSelectionMode(false);
-                    deleteButton.disabled = true;
+                    const hasRows = document.querySelectorAll('.inventory-row').length > 0;
+                    if (!hasRows) {
+                        document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
+                        document.getElementById('empty-search').style.display = 'block';
+                    }
+                    deleteButton.disabled = !hasRows;
                 } catch (error) {
                     console.error('No se pudo eliminar el artículo del inventario.', error);
                     editError.textContent = 'No se pudo eliminar el artículo guardado en este navegador.';
@@ -759,16 +801,20 @@ if ($herramientaSeleccionada !== null) {
                 itemStock.textContent = item.stock === null ? '—' : item.stock;
                 itemMinimum.textContent = item.minimum === null ? '—' : item.minimum;
                 itemUnit.textContent = item.unit;
+                itemDate.textContent = item.fFecha_registro || inventoryRow.dataset.registrationDate || '—';
                 itemNotes.textContent = item.notes || '—';
             }
 
             try {
                 if (localStorage.getItem(inventoryRow.dataset.deletedKey) === 'true') {
                     inventoryRow.remove();
-                    document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
-                    document.getElementById('empty-search').style.display = 'block';
                     itemDeleted = true;
-                    deleteButton.disabled = true;
+                    const hasRows = document.querySelectorAll('.inventory-row').length > 0;
+                    if (!hasRows) {
+                        document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
+                        document.getElementById('empty-search').style.display = 'block';
+                    }
+                    deleteButton.disabled = !hasRows;
                 } else {
                     const storedItem = localStorage.getItem(inventoryRow.dataset.storageKey);
                     if (storedItem !== null) {
@@ -779,6 +825,7 @@ if ($herramientaSeleccionada !== null) {
                             || (parsedItem.minimum !== null && !Number.isInteger(parsedItem.minimum))
                             || typeof parsedItem.notes !== 'string'
                             || (parsedItem.unit !== undefined && !measureUnits.includes(parsedItem.unit))
+                            || (parsedItem.fFecha_registro !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(parsedItem.fFecha_registro))
                         ) {
                             throw new Error('Los datos guardados para este artículo no son válidos.');
                         }
@@ -809,6 +856,7 @@ if ($herramientaSeleccionada !== null) {
                     itemStock.textContent = '—';
                     itemMinimum.textContent = '—';
                     itemUnit.textContent = defaultMeasureUnit;
+                    itemDate.textContent = today();
                     itemNotes.textContent = 'Pendiente de registrar existencias';
                     inventoryRow.hidden = false;
                     itemDeleted = false;
@@ -818,18 +866,21 @@ if ($herramientaSeleccionada !== null) {
                     name: itemName.textContent,
                     stock: '',
                     minimum: '',
-                    notes: ''
+                    notes: '',
+                    fFecha_registro: inventoryRow.dataset.registrationDate || today()
                 };
                 itemName.innerHTML = '';
                 itemStock.innerHTML = '';
                 itemMinimum.innerHTML = '';
                 itemNotes.innerHTML = '';
+                itemDate.innerHTML = '';
 
                 const fields = [
                     [itemName, 'name', current.name, 'text'],
                     [itemStock, 'stock', current.stock ?? '', 'number'],
                     [itemMinimum, 'minimum', current.minimum ?? '', 'number'],
-                    [itemNotes, 'notes', current.notes, 'text']
+                    [itemNotes, 'notes', current.notes, 'text'],
+                    [itemDate, 'fFecha_registro', current.fFecha_registro || inventoryRow.dataset.registrationDate || today(), 'date']
                 ];
                 fields.forEach(([cell, name, value, type]) => {
                     const input = document.createElement('input');
@@ -859,29 +910,47 @@ if ($herramientaSeleccionada !== null) {
                 inventoryRow.querySelector('[name="name"]').focus();
             }
 
-            function saveEditing() {
+            async function saveEditing() {
                 const name = inventoryRow.querySelector('[name="name"]').value.trim();
                 const stockValue = inventoryRow.querySelector('[name="stock"]').value;
                 const minimumValue = inventoryRow.querySelector('[name="minimum"]').value;
                 const unit = inventoryRow.querySelector('[name="unit"]').value;
+                const fFecha_registro = inventoryRow.querySelector('[name="fFecha_registro"]').value;
                 const notes = inventoryRow.querySelector('[name="notes"]').value.trim();
                 const stock = stockValue === '' ? null : Number(stockValue);
                 const minimum = minimumValue === '' ? null : Number(minimumValue);
 
-                if (!name || !measureUnits.includes(unit) || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
-                    editError.textContent = 'Escribe un nombre, selecciona una unidad y usa cantidades enteras iguales o mayores que cero.';
+                if (!name || !measureUnits.includes(unit) || !/^\d{4}-\d{2}-\d{2}$/.test(fFecha_registro) || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
+                    editError.textContent = 'Escribe un nombre, selecciona una unidad, una fecha válida y cantidades enteras iguales o mayores que cero.';
                     editError.style.display = 'block';
                     editModeToggle.checked = true;
                     return false;
                 }
 
-                const updatedItem = { name, stock, minimum, unit, notes };
+                const updatedItem = { name, stock, minimum, unit, notes, fFecha_registro };
                 try {
+                    const response = await fetch('insumos.php?action=guardar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            storage_key: inventoryRow.dataset.storageKey,
+                            name,
+                            stock,
+                            minimum,
+                            unidad: unit,
+                            notes,
+                            fFecha_registro
+                        })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || result.status !== 'success') {
+                        throw new Error(result.message || 'No se pudo guardar en la base de datos.');
+                    }
                     localStorage.setItem(inventoryRow.dataset.storageKey, JSON.stringify(updatedItem));
                     localStorage.removeItem(inventoryRow.dataset.deletedKey);
                 } catch (error) {
                     console.error('No se pudieron guardar los cambios del inventario.', error);
-                    editError.textContent = 'No se pudieron guardar los cambios en este navegador.';
+                    editError.textContent = 'No se pudieron guardar los cambios en la base de datos y el navegador.';
                     editError.style.display = 'block';
                     editModeToggle.checked = true;
                     return false;

@@ -64,6 +64,50 @@ if (
 } elseif (!empty($seccion['herramientas'])) {
     $herramientaSeleccionada = 0;
 }
+
+try {
+    $pdo = new PDO('mysql:host=localhost;dbname=utensilios;charset=utf8mb4', 'root', '', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+} catch (PDOException $error) {
+    die('No se pudo conectar con la base de datos de utensilios: ' . htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'));
+}
+
+$nombreHerramienta = $herramientaSeleccionada !== null ? $seccion['herramientas'][$herramientaSeleccionada] : '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_GET['action'] ?? '') === 'guardar-fecha') {
+    header('Content-Type: application/json; charset=utf-8');
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($input) || !is_string($input['name'] ?? null) || !is_string($input['fFecha_registro'] ?? null) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $input['fFecha_registro'])) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Nombre o fecha inválidos.']);
+        exit;
+    }
+    try {
+        $stmt = $pdo->prepare('SELECT id FROM equipo_menor WHERE nombre_articulo = ? ORDER BY id LIMIT 1');
+        $stmt->execute([$input['name']]);
+        $id = $stmt->fetchColumn();
+        if ($id !== false) {
+            $stmt = $pdo->prepare('UPDATE equipo_menor SET fecha_registro = ? WHERE id = ?');
+            $stmt->execute([$input['fFecha_registro'], $id]);
+        } else {
+            $stmt = $pdo->prepare('INSERT INTO equipo_menor (nombre_articulo, fecha_registro) VALUES (?, ?)');
+            $stmt->execute([$input['name'], $input['fFecha_registro']]);
+        }
+        echo json_encode(['status' => 'success']);
+    } catch (PDOException $error) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'No se pudo guardar la fecha en utensilios.']);
+    }
+    exit;
+}
+
+$fechaRegistro = '';
+if ($nombreHerramienta !== '') {
+    $stmt = $pdo->prepare('SELECT fecha_registro FROM equipo_menor WHERE nombre_articulo = ? ORDER BY id LIMIT 1');
+    $stmt->execute([$nombreHerramienta]);
+    $storedDate = $stmt->fetchColumn();
+    $fechaRegistro = $storedDate ? substr($storedDate, 0, 10) : '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -561,7 +605,6 @@ if (
         <?php endif; ?>
         <section class="content-card" aria-labelledby="page-title">
             <?php if ($herramientaSeleccionada !== null): ?>
-                <?php $nombreHerramienta = $seccion['herramientas'][$herramientaSeleccionada]; ?>
                 <div class="inventory-heading">
                     <div class="inventory-actions">
                         <button class="delete-button" type="button" id="btn-eliminar-seleccion">🗑️ Eliminar</button>
@@ -593,6 +636,7 @@ if (
                                 <th>Cantidad total</th>
                                 <th>Cantidad actual</th>
                                 <th>Notas / Ubicación</th>
+                                <th>Fecha de Registro</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-rows">
@@ -601,6 +645,7 @@ if (
                                 data-storage-key="bakestock-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
                                 data-deleted-key="bakestock-eliminado-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
                                 data-default-name="<?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-registration-date="<?php echo htmlspecialchars($fechaRegistro, ENT_QUOTES, 'UTF-8'); ?>"
                             >
                                 <td class="selection-column" style="text-align: center;">
                                     <input type="checkbox" class="row-checkbox" aria-label="Seleccionar <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>">
@@ -609,6 +654,7 @@ if (
                                 <td class="item-stock">—</td>
                                 <td class="item-minimum">—</td>
                                 <td class="item-notes">Pendiente de registrar existencias</td>
+                                <td class="item-date"><?php echo htmlspecialchars($fechaRegistro ?: '—', ENT_QUOTES, 'UTF-8'); ?></td>
                             </tr>
                         </tbody>
                     </table>
@@ -630,8 +676,13 @@ if (
             const itemName = inventoryRow.querySelector('.item-name');
             const itemStock = inventoryRow.querySelector('.item-stock');
             const itemMinimum = inventoryRow.querySelector('.item-minimum');
+            const itemDate = inventoryRow.querySelector('.item-date');
             const itemNotes = inventoryRow.querySelector('.item-notes');
             let savedItem = null;
+            const today = () => {
+                const now = new Date();
+                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            };
             const deleteButton = document.getElementById('btn-eliminar-seleccion');
             const cancelDeleteButton = document.getElementById('cancelar-eliminacion');
             const inventoryTable = document.querySelector('.inventory-table');
@@ -678,10 +729,13 @@ if (
                             itemDeleted = true;
                         }
                     });
-                    document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
-                    document.getElementById('empty-search').style.display = 'block';
-                    deleteButton.disabled = true;
                     setSelectionMode(false);
+                    const hasRows = document.querySelectorAll('.inventory-row').length > 0;
+                    if (!hasRows) {
+                        document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
+                        document.getElementById('empty-search').style.display = 'block';
+                    }
+                    deleteButton.disabled = !hasRows;
                 } catch (error) {
                     console.error('No se pudo eliminar el artículo del inventario.', error);
                     editError.textContent = 'No se pudo eliminar el artículo guardado en este navegador.';
@@ -695,16 +749,20 @@ if (
                 itemName.textContent = item.name;
                 itemStock.textContent = item.stock === null ? '—' : item.stock;
                 itemMinimum.textContent = item.minimum === null ? '—' : item.minimum;
+                itemDate.textContent = item.fFecha_registro || inventoryRow.dataset.registrationDate || '—';
                 itemNotes.textContent = item.notes || '—';
             }
 
             try {
                 if (localStorage.getItem(inventoryRow.dataset.deletedKey) === 'true') {
                     inventoryRow.remove();
-                    document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
-                    document.getElementById('empty-search').style.display = 'block';
-                    deleteButton.disabled = true;
                     itemDeleted = true;
+                    const hasRows = document.querySelectorAll('.inventory-row').length > 0;
+                    if (!hasRows) {
+                        document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
+                        document.getElementById('empty-search').style.display = 'block';
+                    }
+                    deleteButton.disabled = !hasRows;
                 } else {
                     const storedItem = localStorage.getItem(inventoryRow.dataset.storageKey);
                     if (storedItem !== null) {
@@ -714,6 +772,7 @@ if (
                             || (parsedItem.stock !== null && !Number.isInteger(parsedItem.stock))
                             || (parsedItem.minimum !== null && !Number.isInteger(parsedItem.minimum))
                             || typeof parsedItem.notes !== 'string'
+                            || (parsedItem.fFecha_registro !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(parsedItem.fFecha_registro))
                         ) {
                             throw new Error('Los datos guardados para este artículo no son válidos.');
                         }
@@ -742,6 +801,7 @@ if (
                     itemName.textContent = inventoryRow.dataset.defaultName;
                     itemStock.textContent = '—';
                     itemMinimum.textContent = '—';
+                    itemDate.textContent = today();
                     itemNotes.textContent = 'Pendiente de registrar existencias';
                     inventoryRow.hidden = false;
                     itemDeleted = false;
@@ -751,18 +811,21 @@ if (
                     name: itemName.textContent,
                     stock: '',
                     minimum: '',
-                    notes: ''
+                    notes: '',
+                    fFecha_registro: inventoryRow.dataset.registrationDate || today()
                 };
                 itemName.innerHTML = '';
                 itemStock.innerHTML = '';
                 itemMinimum.innerHTML = '';
                 itemNotes.innerHTML = '';
+                itemDate.innerHTML = '';
 
                 const fields = [
                     [itemName, 'name', current.name, 'text'],
                     [itemStock, 'stock', current.stock ?? '', 'number'],
                     [itemMinimum, 'minimum', current.minimum ?? '', 'number'],
-                    [itemNotes, 'notes', current.notes, 'text']
+                    [itemNotes, 'notes', current.notes, 'text'],
+                    [itemDate, 'fFecha_registro', current.fFecha_registro || inventoryRow.dataset.registrationDate || today(), 'date']
                 ];
                 fields.forEach(([cell, name, value, type]) => {
                     const input = document.createElement('input');
@@ -781,28 +844,38 @@ if (
                 inventoryRow.querySelector('[name="name"]').focus();
             }
 
-            function saveEditing() {
+            async function saveEditing() {
                 const name = inventoryRow.querySelector('[name="name"]').value.trim();
                 const stockValue = inventoryRow.querySelector('[name="stock"]').value;
                 const minimumValue = inventoryRow.querySelector('[name="minimum"]').value;
                 const notes = inventoryRow.querySelector('[name="notes"]').value.trim();
+                const fFecha_registro = inventoryRow.querySelector('[name="fFecha_registro"]').value;
                 const stock = stockValue === '' ? null : Number(stockValue);
                 const minimum = minimumValue === '' ? null : Number(minimumValue);
 
-                if (!name || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
-                    editError.textContent = 'Escribe un nombre y cantidades enteras iguales o mayores que cero.';
+                if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(fFecha_registro) || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
+                    editError.textContent = 'Escribe un nombre, una fecha válida y cantidades enteras iguales o mayores que cero.';
                     editError.style.display = 'block';
                     editModeToggle.checked = true;
                     return false;
                 }
 
-                const updatedItem = { name, stock, minimum, notes };
+                const updatedItem = { name, stock, minimum, notes, fFecha_registro };
                 try {
+                    const response = await fetch('Utensilios.php?action=guardar-fecha', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, fFecha_registro })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || result.status !== 'success') {
+                        throw new Error(result.message || 'No se pudo guardar la fecha en la base de datos.');
+                    }
                     localStorage.setItem(inventoryRow.dataset.storageKey, JSON.stringify(updatedItem));
                     localStorage.removeItem(inventoryRow.dataset.deletedKey);
                 } catch (error) {
                     console.error('No se pudieron guardar los cambios del inventario.', error);
-                    editError.textContent = 'No se pudieron guardar los cambios en este navegador.';
+                    editError.textContent = 'No se pudieron guardar los cambios en la base de datos y el navegador.';
                     editError.style.display = 'block';
                     editModeToggle.checked = true;
                     return false;
