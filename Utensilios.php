@@ -1,51 +1,17 @@
 <?php
 $secciones = [
-    'inicio' => [
-        'etiqueta' => 'Inicio',
-        'titulo' => 'Bienvenido al panel principal',
-        'descripcion' => 'Selecciona una etapa del proceso de panadería en el menú para consultar su información.',
-    ],
-    'medicion' => [
-        'etiqueta' => 'Medición y Pesado',
-        'titulo' => 'Medición y Pesado',
-        'descripcion' => 'Etapa 1: prepara y pesa las cantidades de cada ingrediente antes de comenzar la elaboración.',
-        'herramientas' => [
-            'Balanza de precisión / Báscula digital',
-            'Jarras y cucharas medidoras',
-            'Termómetro',
+    'cocina caliente' => [
+        'etiqueta' => 'Cocina caliente',
+        'titulo' => 'Cocina caliente',
         ],
-    ],
-    'mezcla' => [
-        'etiqueta' => 'Mezcla y Preparación',
-        'titulo' => 'Mezcla y Preparación',
-        'descripcion' => 'Etapa 2: integra los ingredientes y prepara la masa de acuerdo con el producto que vas a elaborar.',
-        'herramientas' => [
-            'Bowls o cuencos',
-            'Cernidores o arneros',
-            'Espátulas y brochas',
+    'panaderia' => [
+        'etiqueta' => 'Panaderia',
+        'titulo' => 'Panaderia',
         ],
-    ],
-    'corte' => [
-        'etiqueta' => 'Corte, División y formado',
-        'titulo' => 'Corte, División y formado',
-        'descripcion' => 'Etapa 3: divide la masa en porciones y dales la forma necesaria antes de hornearlas.',
-        'herramientas' => [
-            'Raspador de masa',
-            'Cuchillos de sierra y hojas de panadero',
-            'Rodillos de amasar',
-            'Cortadores y moldes',
+    'reposteria' => [
+        'etiqueta' => 'Reposteria',
+        'titulo' => 'Reposteria',
         ],
-    ],
-    'horneado' => [
-        'etiqueta' => 'Horneado y reposo',
-        'titulo' => 'Horneado y reposo',
-        'descripcion' => 'Etapa 4: hornea las piezas y déjalas reposar el tiempo necesario antes de manipularlas.',
-        'herramientas' => [
-            'Charolas y bandejas',
-            'Moldes de caja y rosca',
-            'Rejilla de enfriamiento',
-        ],
-    ],
 ];
 
 $seccionActual = $_GET['seccion'] ?? 'medicion';
@@ -593,18 +559,7 @@ if ($nombreHerramienta !== '') {
     </aside>
 
     <main class="main-content">
-        <?php if (!empty($seccion['herramientas'])): ?>
-            <div class="stage-tools" aria-label="Herramientas de <?php echo htmlspecialchars($seccion['etiqueta'], ENT_QUOTES, 'UTF-8'); ?>">
-                <?php foreach ($seccion['herramientas'] as $indice => $herramienta): ?>
-                    <a
-                        href="Utensilios.php?seccion=<?php echo urlencode($seccionActual); ?>&amp;herramienta=<?php echo $indice; ?>"
-                        <?php echo $herramientaSeleccionada === $indice ? 'aria-current="page"' : ''; ?>
-                    ><?php echo htmlspecialchars($herramienta, ENT_QUOTES, 'UTF-8'); ?></a>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
         <section class="content-card" aria-labelledby="page-title">
-            <?php if ($herramientaSeleccionada !== null): ?>
                 <div class="inventory-heading">
                     <div class="inventory-actions">
                         <button class="delete-button" type="button" id="btn-eliminar-seleccion">🗑️ Eliminar</button>
@@ -661,13 +616,8 @@ if ($nombreHerramienta !== '') {
                     <p class="empty-search" id="empty-search" role="status">No se encontraron resultados.</p>
                     <p class="edit-error" id="edit-error" role="alert"></p>
                 </div>
-            <?php else: ?>
-                <h1 id="page-title"><?php echo htmlspecialchars($seccion['titulo'], ENT_QUOTES, 'UTF-8'); ?></h1>
-                <p><?php echo htmlspecialchars($seccion['descripcion'], ENT_QUOTES, 'UTF-8'); ?></p>
-            <?php endif; ?>
         </section>
     </main>
-    <?php if ($herramientaSeleccionada !== null): ?>
         <script>
             const inventorySearch = document.getElementById('inventory-search');
             const inventoryRow = document.querySelector('.inventory-row');
@@ -909,6 +859,5 @@ if ($nombreHerramienta !== '') {
                 document.getElementById('empty-search').style.display = visibleRows ? 'none' : 'block';
             });
         </script>
-    <?php endif; ?>
 </body>
 </html>

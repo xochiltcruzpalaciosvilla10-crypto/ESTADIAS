@@ -174,17 +174,21 @@ if ($herramientaSeleccionada !== null) {
 
         .sidebar {
             position: fixed;
-            inset: 0 auto 0 0;
-            width: 260px;
-            padding-top: 20px;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 240px;
+            padding-top: 5px !important;
             background: #3e2723;
             color: #fff;
             box-shadow: 4px 0 10px rgba(0, 0, 0, 0.08);
         }
 
         .sidebar-header {
-            margin-bottom: 24px;
-            padding: 0 20px 20px;
+            margin-bottom: 10px !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 10px !important;
             border-bottom: 1px solid #5d4037;
             text-align: center;
         }
@@ -194,6 +198,8 @@ if ($herramientaSeleccionada !== null) {
             font-size: 24px;
             font-weight: 600;
             letter-spacing: 1px;
+            margin-top: 0 !important
+            margin-bottom: 0 !important;
         }
 
         .sidebar-menu {
@@ -533,8 +539,10 @@ if ($herramientaSeleccionada !== null) {
             }
 
             .sidebar-header {
-                margin-bottom: 10px;
-                padding-bottom: 14px;
+                margin-bottom: 8px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #5a3723;
+                text-align: center;
             }
 
             .sidebar-menu {
@@ -587,12 +595,184 @@ if ($herramientaSeleccionada !== null) {
                 box-shadow: none;
             }
         }
-    </style>
+    .btn-guardar-estilo {
+    background-color: #2E7D32; /* Verde oscuro profesional para confirmar guardado */
+    color: #FFFFFF;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.btn-guardar-estilo:hover {
+    background-color: #1B5E20;
+    transform: translateY(-1px);
+}
+
+#contenedor-guardar {
+    display: none;
+    margin-top: 8px;
+}
+
+.grupo-edicion:has(#edit-mode-toggle:checked) #contenedor-guardar {
+    display: block !important;
+}
+
+.search-controls {
+    align-items: flex-start !important;
+}
+
+/* =========================================================
+   TRANSFORMACIÓN DE BARRA LATERAL A MENÚ HORIZONTAL SUPERIOR
+   ========================================================= */
+.sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 60px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 25px !important;
+    z-index: 1000 !important;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25) !important;
+}
+
+/* El logotipo BakeStock a la izquierda */
+.sidebar-header {
+    border-bottom: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+}
+
+/* Los enlaces del menú en fila horizontal */
+.sidebar-menu {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.sidebar-menu a {
+    padding: 10px 16px !important;
+    font-size: 16px !important;
+    border-left: none !important;
+    border-bottom: 3px solid transparent !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active {
+    border-bottom-color: #f6b740 !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* El botón de regresar (flechita) a la derecha */
+.btn-regresar {
+    margin-top: 0 !important;
+    padding: 6px 12px !important;
+    position: static !important;
+}
+
+/* Ajustar el contenido principal (barra amarilla y tabla) para ocupar todo el ancho */
+.main-content {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-top: 75px !important; /* Espacio para no quedar debajo de la barra café */
+    padding: 20px 30px !important;
+}
+.sidebar-header h2{
+    font-size: 30px !important;
+    font-weight: 800 !important;
+    letter-spacing: 1.5px !important;
+}
+/* =========================================================
+   EFECTO DE LUZ DORADA GIRANDO ALREDEDOR DEL ELEMENTO ACTIVO
+   ========================================================= */
+
+/* Variable animable para el ángulo de giro */
+@property --angulo-giro {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes girarBordeDorado {
+    from { --angulo-giro: 0deg; }
+    to { --angulo-giro: 360deg; }
+}
+
+/* Estilo para el enlace seleccionado en el menú café */
+.sidebar-menu a.active {
+    position: relative !important;
+    background-color: #2b180d !important; /* Fondo café oscuro */
+    color: #fff6e0 !important;
+    border: 2px solid transparent !important;
+    border-radius: 8px !important;
+    z-index: 1 !important;
+    overflow: hidden !important;
+}
+
+/* Capa giratoria de luz amarillita/dorada detrás del borde */
+.sidebar-menu a.active::before {
+    content: '' !important;
+    position: absolute !important;
+    inset: -150% !important; /* Más grande para cubrir al girar */
+    background: conic-gradient(
+        from var(--angulo-giro),
+        transparent 0%,
+        transparent 70%,
+        #f6b740 85%,
+        #fff3b0 95%,
+        #f6b740 100%
+    ) !important;
+    animation: girarBordeDorado 6.5s linear infinite !important;
+    z-index: -2 !important;
+}
+
+/* Máscara interna para que solo se vea el borde iluminado y no tape el texto */
+.sidebar-menu a.active::after {
+    content: '' !important;
+    position: absolute !important;
+    inset: 2px !important; /* Grosor de la línea que gira */
+    background-color: #3b2314 !important; /* Mismo color café de la barra */
+    border-radius: 6px !important;
+    z-index: -1 !important;
+}
+.btn-guardar-estilo {
+    background: linear-gradient(135deg, #4A2511 0%, #2C1508 100%) !important;
+    color: #F3E6C6 !important;
+    border: 2px solid #f6b740 !important;
+    box-shadow: 0 0 12px rgba(246, 183, 64, 0.7) !important;
+    padding: 8px 18px !important;
+    border-radius: 8px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+}
+
+
+</style>
 </head>
 <body>
-       <aside class="sidebar">
-        <div class="sidebar-header">
-            <h2>🥖 BakeStock</h2>
+       <aside class="sidebar" style="padding-top: 8px; !important;">
+        <div class="sidebar-header" style="margin-top: 0 !important; padding-bottom: 25px !important; margin-bottom: 25px !important;">
+            <h2  style="margin-top: 0 !important; padding-top: 0 !important;">🥖 BakeStock</h2>
         </div>
         <nav aria-label="Menú principal">
             <ul class="sidebar-menu">
@@ -653,11 +833,31 @@ if ($herramientaSeleccionada !== null) {
                         class="print-button add-item-link"
                         href="anadir.php?seccion=<?php echo rawurlencode($seccionActual); ?>&amp;herramienta=<?php echo $herramientaSeleccionada; ?>"
                     >➕ Agregar artículo</a>
-                    <label class="edit-mode-control" for="edit-mode-toggle">
-                        <span>Modo edición</span>
-                        <input class="edit-mode-toggle" id="edit-mode-toggle" type="checkbox" role="switch" aria-label="Activar modo de edición">
-                    </label>
-                </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
+ <div class="search-controls" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; width: 100%; margin-bottom: 20px;">
+
+    <div class="grupo-edicion" style="display: flex; flex-direction: column; align-items: flex-end;">
+        <label class="edit-mode-control" for="edit-mode-toggle">
+            <span>Modo edición</span>
+            <input class="edit-mode-toggle" id="edit-mode-toggle" type="checkbox" />
+        </label>
+
+        <div id="contenedor-guardar">
+            <button type="button" id="btn-guardar-cambios" class="btn-guardar-estilo">
+                Guardar cambios
+            </button>
+        </div>
+    </div>
+</div>
+
+    <div id="contenedor-guardar">
+        <button type="button" id="btn-guardar-cambios" class="btn-guardar-estilo">
+            Guardar cambios
+        </button>
+    </div>
+</div>
+
+</div>
                 <div class="inventory-table-wrap">
                     <h2>Listado activo de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h2>
                     <table class="inventory-table">
@@ -703,6 +903,7 @@ if ($herramientaSeleccionada !== null) {
             <?php endif; ?>
         </section>
     </main>
+
     <?php if ($herramientaSeleccionada !== null): ?>
         <script src="inventario-listado.js"></script>
         <script>
@@ -983,7 +1184,14 @@ if ($herramientaSeleccionada !== null) {
 
                 document.getElementById('empty-search').style.display = visibleRows ? 'none' : 'block';
             });
-        </script>
+            
     <?php endif; ?>
+    <script>
+    document.querySelector('.sidebar').style.setProperty('padding-top', '5px', 'important');
+    document.querySelector('.sidebar-header').style.setProperty('margin-top', '0px', 'important');
+    document.querySelector('.sidebar-header').style.setProperty('padding-top', '0px', 'important');
+</script>
+
+    
 </body>
 </html>
