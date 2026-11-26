@@ -75,8 +75,13 @@ $resultado = $stmt->get_result();
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remover Productos | BakeStock</title>
     <style>
+        img {
+  max-width: 100%;
+  height: auto;
+}
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body {
             min-height: 100vh;

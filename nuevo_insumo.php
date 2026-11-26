@@ -28,8 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nuevo Insumo | BakeStock</title>
     <style>
+        img {
+  max-width: 100%;
+  height: auto;
+}
         body {
             background-color: #8c7560;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

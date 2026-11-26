@@ -62,8 +62,13 @@ if ($resultado && $resultado->num_rows > 0) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($tituloActual); ?> | BakeStock</title>
 <style>
+    img {
+  max-width: 100%;
+  height: auto;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 body { background: url('fondo.jpg') no-repeat center center fixed; background-size: cover; background-color: #9e8a78; height: 100vh; overflow: hidden; display: flex; padding: 16px; gap: 18px; }
 .sidebar { width: 235px; background: rgba(58, 34, 18, 0.94); backdrop-filter: blur(4px); border-radius: 14px; padding: 22px 15px; display: flex; flex-direction: column; justify-content: space-between; color: #faf6f0; flex-shrink: 0; border: 1.5px solid #c8963e; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); }
