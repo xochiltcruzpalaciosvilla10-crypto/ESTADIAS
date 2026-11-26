@@ -65,7 +65,7 @@ if ($resultado && $resultado->num_rows > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($tituloActual); ?> | BakeStock</title>
 <style>
-    img {
+img {
   max-width: 100%;
   height: auto;
 }
@@ -124,20 +124,95 @@ tbody tr:hover { background-color: #f5ede3; }
 .btn-modificar { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background-color: #462814; color: #ffffff; text-decoration: none; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 10px rgba(70, 40, 20, 0.35); transition: all 0.2s ease; }
 .btn-modificar:hover { background-color: #2e190b; transform: translateY(-2px); box-shadow: 0 6px 14px rgba(70, 40, 20, 0.45); }
 .btn-modificar:active { transform: translateY(0); }
+
+/* Ajustes para Tabletas (entre 769px y 1024px) */
+@media (max-width: 1024px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Ajustes para Celulares (hasta 768px) */
+@media (max-width: 768px) {
+  body {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .main-wrapper {
+    width: 100% !important;
+    overflow: visible;
+  }
+
+  .top-tabs {
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .search-input {
+    min-width: 100%;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  thead, tbody, tr {
+    display: table;
+    width: 700px;
+  }
+}
+
+/* Reglas exclusivas para cuando mandas a Imprimir */
 @media print {
-    @page { margin: 10mm; }
-    body, html { background: #fff !important; height: auto !important; overflow: visible !important; display: block !important; padding: 0 !important; margin: 0 !important; }
-    .sidebar, .top-tabs, .kpi-grid, .search-row, .header-btns, .btn-print, .btn-excel, button, aside { display: none !important; }
-    .main-wrapper, .content-card, .table-box { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
-    .card-header { box-shadow: none !important; padding: 0 0 10px 0 !important; border-bottom: 2px solid #3d2214 !important; border-radius: 0 !important; margin-bottom: 12px !important; }
-    .section-subtitle { box-shadow: none !important; padding: 0 0 8px 0 !important; margin-bottom: 6px !important; }
-    table { display: table !important; width: 100% !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border-collapse: collapse !important; }
-    thead { display: table-header-group !important; }
-    tbody { display: table-row-group !important; }
-    tr { display: table-row !important; break-inside: avoid !important; }
-    th, td { display: table-cell !important; border: 1px solid #ccc !important; padding: 8px !important; font-size: 11.5px !important; color: #000 !important; }
-    th { background-color: #3d2214 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    th:last-child, td:last-child { display: none !important; }
+  .sidebar, .top-tabs, .kpi-grid, .search-row, .header-btns, .btn-print, .btn-excel, button, aside {
+    display: none !important;
+  }
+  .main-wrapper, .content-card, .table-box {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .card-header {
+    box-shadow: none !important;
+    padding: 0 0 10px 0 !important;
+    border-bottom: 2px solid #3d2214 !important;
+    border-radius: 0 !important;
+    margin-bottom: 12px !important;
+  }
+  .section-subtitle {
+    box-shadow: none !important;
+    padding: 0 0 8px 0 !important;
+    margin-bottom: 6px !important;
+  }
+  thead {
+    display: table-header-group;
+  }
 }
 </style>
 

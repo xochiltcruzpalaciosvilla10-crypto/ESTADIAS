@@ -103,95 +103,116 @@ $utensilio = $resultado->fetch_assoc();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modificar Utensilio - BakeStock</title>
     <style>
-        img {
-  max-width: 100%;
-  height: auto;
-}
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background-color: #9e8a78; /* Fondo café taupe igual que Añadir */
-            padding: 40px; 
-            margin: 0; 
-        }
-        .contenedor { 
-            max-width: 500px; 
-            margin: auto; 
-            background: #ffffff; 
-            padding: 30px; 
-            border-radius: 14px; 
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); 
-            border-top: 6px solid #462814; /* Borde café oscuro BakeStock */
-        }
-        h2 { 
-            color: #462814; 
-            margin-top: 0; 
-            font-size: 22px; 
-        }
-        label { 
-            display: block; 
-            margin-top: 15px; 
-            font-weight: 600; 
-            color: #462814; 
-            font-size: 14px; 
-        }
-        input, select, textarea { 
-            width: 100%; 
-            padding: 10px 12px; 
-            margin-top: 6px; 
-            background-color: #fbf7f3; /* Fondo cremita suave en las cajitas */
-            border: 1px solid #eadfd5; 
-            border-radius: 8px; 
-            box-sizing: border-box; 
-            font-size: 14px; 
-            color: #3d2c1e;
-            font-family: inherit;
-        }
-        input:focus, select:focus, textarea:focus { 
-            outline: none; 
-            border-color: #b08256; 
-            background-color: #ffffff;
-        }
-        .ayuda { 
-            font-size: 12px; 
-            color: #8c7a6b; 
-            margin-top: 4px; 
-        }
-        .botones { 
-            margin-top: 25px; 
-            display: flex; 
-            gap: 12px; 
-        }
-        .btn-guardar { 
-            flex: 1; 
-            background-color: #462814; /* Café oscuro igual al de Añadir */
-            color: white; 
-            border: none; 
-            padding: 12px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 15px; 
-            transition: background 0.2s;
-        }
-        .btn-guardar:hover { 
-            background-color: #321b0c; 
-        }
-        .btn-cancelar { 
-            flex: 1; 
-            background-color: #d6a472; /* Tono caramelo/arena igual al botón regresar */
-            color: #462814; 
-            text-decoration: none; 
-            padding: 12px; 
-            border-radius: 8px; 
-            text-align: center; 
-            font-weight: bold; 
-            font-size: 15px; 
-            transition: background 0.2s;
-        }
-        .btn-cancelar:hover { 
-            background-color: #c5915e; 
-        }
-    </style>
+  * {
+    box-sizing: border-box;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background-color: #9e8a78; /* Fondo café taupe igual que Añadir */
+    padding: 40px; 
+    margin: 0; 
+  }
+  .contenedor { 
+    width: 100%;
+    max-width: 500px; 
+    margin: auto; 
+    background: #ffffff; 
+    padding: 30px; 
+    border-radius: 14px; 
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); 
+    border-top: 6px solid #462814; /* Borde café oscuro BakeStock */
+  }
+  h2 { 
+    color: #462814; 
+    margin-top: 0; 
+    font-size: 22px; 
+  }
+  label { 
+    display: block; 
+    margin-top: 15px; 
+    font-weight: 600; 
+    color: #462814; 
+    font-size: 14px; 
+  }
+  input, select, textarea { 
+    width: 100%; 
+    padding: 10px 12px; 
+    margin-top: 6px; 
+    background-color: #fbf7f3; /* Fondo cremita suave en las cajitas */
+    border: 1px solid #eadfd5; 
+    border-radius: 8px; 
+    box-sizing: border-box; 
+    font-size: 14px; 
+    color: #3d2c1e;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { 
+    outline: none; 
+    border-color: #b08256; 
+    background-color: #ffffff;
+  }
+  .ayuda { 
+    font-size: 12px; 
+    color: #8c7a6b; 
+    margin-top: 4px; 
+  }
+  .botones { 
+    margin-top: 25px; 
+    display: flex; 
+    gap: 12px; 
+  }
+  .btn-guardar { 
+    flex: 1; 
+    background-color: #462814; /* Café oscuro igual al de Añadir */
+    color: white; 
+    border: none; 
+    padding: 12px; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 15px; 
+    transition: background 0.2s;
+  }
+  .btn-guardar:hover { 
+    background-color: #321b0c; 
+  }
+  .btn-cancelar { 
+    flex: 1; 
+    background-color: #d6a472; /* Tono caramelo/arena igual al botón regresar */
+    color: #462814; 
+    text-decoration: none; 
+    padding: 12px; 
+    border-radius: 8px; 
+    text-align: center; 
+    font-weight: bold; 
+    font-size: 15px; 
+    transition: background 0.2s;
+  }
+  .btn-cancelar:hover { 
+    background-color: #c5915e; 
+  }
+
+  /* Ajustes para Celulares (hasta 600px) */
+  @media (max-width: 600px) {
+    body {
+      padding: 16px;
+    }
+    .contenedor {
+      padding: 22px 18px;
+    }
+    h2 {
+      font-size: 19px;
+    }
+    .botones {
+      flex-direction: column;
+    }
+  }
+</style>
+
 </head>
 <body>
 

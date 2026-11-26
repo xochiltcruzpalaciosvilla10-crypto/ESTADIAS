@@ -113,113 +113,144 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agregar Artículo | BakeStock</title>
     <style>
-        img {
-  max-width: 100%;
-  height: auto;
-}
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #9e8a78;
-            margin: 0;
-            padding: 30px 40px;
-        }
-        .top-bar {
-            background-color: #fdf8f2;
-            border-radius: 12px;
-            padding: 16px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-            max-width: 1150px;
-            margin: 0 auto 30px auto;
-        }
-        .top-bar .left-label {
-            font-weight: 700;
-            color: #462814;
-            font-size: 16px;
-        }
-        .top-bar h1 {
-            margin: 0;
-            font-size: 20px;
-            color: #462814;
-            font-weight: 700;
-        }
-        .btn-volver {
-            background-color: #d6a472;
-            color: #462814;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 13px;
-            transition: background 0.2s;
-        }
-        .btn-volver:hover {
-            background-color: #c5915e;
-        }
-        .form-card {
-            background-color: #ffffff;
-            max-width: 440px;
-            margin: 0 auto;
-            padding: 32px 36px;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-        }
-        .alerta-duplicado {
-            background-color: #fee2e2;
-            border-left: 4px solid #dc2626;
-            color: #991b1b;
-            padding: 12px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 18px;
-            line-height: 1.4;
-        }
-        label {
-            display: block;
-            margin-top: 15px;
-            margin-bottom: 6px;
-            font-weight: 700;
-            color: #462814;
-            font-size: 13px;
-        }
-        label:first-of-type {
-            margin-top: 0;
-        }
-        input, select {
-            width: 100%;
-            padding: 11px 14px;
-            background-color: #fbf7f3;
-            border: 1px solid #eadfd5;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 14px;
-            color: #3d2c1e;
-            font-family: inherit;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #b08256;
-            background-color: #ffffff;
-        }
-        .btn-guardar {
-            width: 100%;
-            margin-top: 24px;
-            background-color: #462814;
-            color: #ffffff;
-            border: none;
-            padding: 13px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-        .btn-guardar:hover {
-            background-color: #321b0c;
-        }
-    </style>
+  * {
+    box-sizing: border-box;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #9e8a78;
+    margin: 0;
+    padding: 30px 40px;
+  }
+  .top-bar {
+    background-color: #fdf8f2;
+    border-radius: 12px;
+    padding: 16px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    max-width: 1150px;
+    margin: 0 auto 30px auto;
+  }
+  .top-bar .left-label {
+    font-weight: 700;
+    color: #462814;
+    font-size: 16px;
+  }
+  .top-bar h1 {
+    margin: 0;
+    font-size: 20px;
+    color: #462814;
+    font-weight: 700;
+    text-align: center;
+  }
+  .btn-volver {
+    background-color: #d6a472;
+    color: #462814;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .btn-volver:hover {
+    background-color: #c5915e;
+  }
+  .form-card {
+    background-color: #ffffff;
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+    padding: 32px 36px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  }
+  .alerta-duplicado {
+    background-color: #fee2e2;
+    border-left: 4px solid #dc2626;
+    color: #991b1b;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 18px;
+    line-height: 1.4;
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 6px;
+    font-weight: 700;
+    color: #462814;
+    font-size: 13px;
+  }
+  label:first-of-type {
+    margin-top: 0;
+  }
+  input, select {
+    width: 100%;
+    padding: 11px 14px;
+    background-color: #fbf7f3;
+    border: 1px solid #eadfd5;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 14px;
+    color: #3d2c1e;
+    font-family: inherit;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: #b08256;
+    background-color: #ffffff;
+  }
+  .btn-guardar {
+    width: 100%;
+    margin-top: 24px;
+    background-color: #462814;
+    color: #ffffff;
+    border: none;
+    padding: 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.2s;
+  }
+  .btn-guardar:hover {
+    background-color: #321b0c;
+  }
+
+  /* Ajustes para Celulares y Tabletas chicas (hasta 650px) */
+  @media (max-width: 650px) {
+    body {
+      padding: 16px;
+    }
+    .top-bar {
+      flex-direction: column;
+      text-align: center;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .top-bar h1 {
+      font-size: 18px;
+    }
+    .btn-volver {
+      width: 100%;
+      text-align: center;
+    }
+    .form-card {
+      padding: 24px 20px;
+    }
+  }
+</style>
+
 </head>
 <body>
 
