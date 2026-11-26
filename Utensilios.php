@@ -1,863 +1,365 @@
 <?php
-$secciones = [
-    'cocina caliente' => [
-        'etiqueta' => 'Cocina caliente',
-        'titulo' => 'Cocina caliente',
-        ],
-    'panaderia' => [
-        'etiqueta' => 'Panaderia',
-        'titulo' => 'Panaderia',
-        ],
-    'reposteria' => [
-        'etiqueta' => 'Reposteria',
-        'titulo' => 'Reposteria',
-        ],
+session_start();
+$conexion = new mysqli("localhost", "root", "", "utensilios");
+if ($conexion->connect_error) {
+    die("Error de conexión: " . $conexion->connect_error);
+}
+$conexion->set_charset("utf8mb4");
+
+// Aseguramos que la columna 'seccion' exista
+$checkCol = $conexion->query("SHOW COLUMNS FROM equipo_menor LIKE 'seccion'");
+if ($checkCol && $checkCol->num_rows === 0) {
+    $conexion->query("ALTER TABLE equipo_menor ADD COLUMN seccion VARCHAR(50) NOT NULL DEFAULT 'cocina caliente'");
+}
+
+// Detectar y normalizar la pestaña activa
+$titulos = [
+    'cocina caliente' => 'Cocina caliente',
+    'panaderia'       => 'Panadería',
+    'reposteria'      => 'Repostería'
 ];
 
-$seccionActual = $_GET['seccion'] ?? 'medicion';
-if (!is_string($seccionActual) || !isset($secciones[$seccionActual])) {
-    $seccionActual = 'medicion';
+$seccion = $_GET['seccion'] ?? 'cocina caliente';
+if ($seccion === 'cocina+caliente' || !isset($titulos[$seccion])) {
+    $seccion = 'cocina caliente';
 }
-$seccion = $secciones[$seccionActual];
-$herramientaSeleccionada = null;
-if (
-    isset($_GET['herramienta'])
-    && is_string($_GET['herramienta'])
-    && ctype_digit($_GET['herramienta'])
-    && isset($seccion['herramientas'][(int) $_GET['herramienta']])
-) {
-    $herramientaSeleccionada = (int) $_GET['herramienta'];
-} elseif (!empty($seccion['herramientas'])) {
-    $herramientaSeleccionada = 0;
-}
+$tituloActual = $titulos[$seccion];
 
-try {
-    $pdo = new PDO('mysql:host=localhost;dbname=utensilios;charset=utf8mb4', 'root', '', [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    ]);
-} catch (PDOException $error) {
-    die('No se pudo conectar con la base de datos de utensilios: ' . htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'));
+// Consultar únicamente los artículos de la pestaña activa
+$stmt = $conexion->prepare("SELECT * FROM equipo_menor WHERE seccion = ? ORDER BY fecha_registro DESC");
+if (!$stmt) {
+    die("Error SQL: " . $conexion->error);
 }
+$stmt->bind_param("s", $seccion);
+$stmt->execute();
+$resultado = $stmt->get_result();
 
-$nombreHerramienta = $herramientaSeleccionada !== null ? $seccion['herramientas'][$herramientaSeleccionada] : '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_GET['action'] ?? '') === 'guardar-fecha') {
-    header('Content-Type: application/json; charset=utf-8');
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($input) || !is_string($input['name'] ?? null) || !is_string($input['fFecha_registro'] ?? null) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $input['fFecha_registro'])) {
-        http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'Nombre o fecha inválidos.']);
-        exit;
-    }
-    try {
-        $stmt = $pdo->prepare('SELECT id FROM equipo_menor WHERE nombre_articulo = ? ORDER BY id LIMIT 1');
-        $stmt->execute([$input['name']]);
-        $id = $stmt->fetchColumn();
-        if ($id !== false) {
-            $stmt = $pdo->prepare('UPDATE equipo_menor SET fecha_registro = ? WHERE id = ?');
-            $stmt->execute([$input['fFecha_registro'], $id]);
+// Calcular contadores para las 4 tarjetas KPI y guardar filas para la tabla
+$totalArticulos = 0;
+$countOk        = 0;
+$countBajo      = 0;
+$countSinStock  = 0;
+$filasTabla     = [];
+
+if ($resultado && $resultado->num_rows > 0) {
+    while ($row = $resultado->fetch_assoc()) {
+        $filasTabla[] = $row;
+        $totalArticulos++;
+        $act = intval($row['cantidad_actual']);
+        $ide = intval($row['cantidad_ideal']);
+
+        if ($act === 0) {
+            $countSinStock++;
+        } elseif ($act < $ide) {
+            $countBajo++;
         } else {
-            $stmt = $pdo->prepare('INSERT INTO equipo_menor (nombre_articulo, fecha_registro) VALUES (?, ?)');
-            $stmt->execute([$input['name'], $input['fFecha_registro']]);
+            $countOk++;
         }
-        echo json_encode(['status' => 'success']);
-    } catch (PDOException $error) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => 'No se pudo guardar la fecha en utensilios.']);
     }
-    exit;
-}
-
-$fechaRegistro = '';
-if ($nombreHerramienta !== '') {
-    $stmt = $pdo->prepare('SELECT fecha_registro FROM equipo_menor WHERE nombre_articulo = ? ORDER BY id LIMIT 1');
-    $stmt->execute([$nombreHerramienta]);
-    $storedDate = $stmt->fetchColumn();
-    $fechaRegistro = $storedDate ? substr($storedDate, 0, 10) : '';
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($seccion['titulo'], ENT_QUOTES, 'UTF-8'); ?> | BakeStock</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+    <title><?php echo htmlspecialchars($tituloActual); ?> | BakeStock</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background: url('fondo.jpg') no-repeat center center fixed; background-size: cover; background-color: #9e8a78; height: 100vh; overflow: hidden; display: flex; padding: 16px; gap: 18px; }
+.sidebar { width: 235px; background: rgba(58, 34, 18, 0.94); backdrop-filter: blur(4px); border-radius: 14px; padding: 22px 15px; display: flex; flex-direction: column; justify-content: space-between; color: #faf6f0; flex-shrink: 0; border: 1.5px solid #c8963e; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); }
+.brand { font-size: 20px; font-weight: 800; color: #e5c384; text-align: center; padding-bottom: 16px; border-bottom: 1.5px solid #c8963e; margin-bottom: 18px; }
+.menu-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; color: #e5c384; margin: 18px 0 8px 6px; font-weight: 700; }
+.nav-btn { display: block; text-decoration: none; color: #f5ebe1; background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(200, 150, 62, 0.35); padding: 11px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 10px; transition: all 0.2s ease; }
+.nav-btn:hover { background-color: rgba(200, 150, 62, 0.18); border-color: #e5c384; color: #ffffff; }
+.nav-btn.active { background-color: rgba(200, 150, 62, 0.28); border: 1.5px solid #e5c384; color: #ffffff; font-weight: 700; }
+.nav-btn.danger { color: #dc2626; border-color: rgba(200, 150, 62, 0.35); }
+.nav-btn.danger:hover { background-color: rgba(220, 38, 38, 0.18); border-color: #dc2626; }
+.sidebar-bottom { padding-top: 14px; border-top: 1px solid rgba(200, 150, 62, 0.25); }
+.main-wrapper { flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-x: hidden; overflow-y: auto; padding-right: 4px; }
+.top-tabs { background: rgba(58, 34, 18, 0.88); backdrop-filter: blur(4px); border-radius: 12px; padding: 11px 24px; display: flex; justify-content: center; gap: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+.tab-link { text-decoration: none; color: #e6d8cc; font-size: 13.5px; font-weight: 600; padding: 7px 20px; border-radius: 8px; transition: 0.2s; }
+.tab-link:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.12); }
+.tab-link.active { background-color: #faf6f0; color: #3d2214; font-weight: 700; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); }
+.content-card { flex: 1; background-color: transparent; padding: 0; box-shadow: none; display: flex; flex-direction: column; gap: 16px; }
+.card-header { background-color: #faf6f0; border-radius: 14px; padding: 18px 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14); }
+.card-header h1 { font-size: 22px; font-weight: 800; color: #3d2214; }
+.btn-print, .btn-excel { background-color: #462814; color: #ffffff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15); transition: 0.2s; }
+.btn-excel { background-color: #1e7e34; }
+.btn-excel:hover { background-color: #166534; }
+.btn-print:hover { background-color: #2e190b; }
+.kpi-grid { display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.kpi-card { background-color: #faf6f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12); border-left: 5px solid #462814; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; user-select: none; }
+.kpi-card:nth-child(2) { border-left-color: #1e7e34; }
+.kpi-card:nth-child(3) { border-left-color: #d97706; }
+.kpi-card:nth-child(4) { border-left-color: #c81e1e; }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16); }
+.kpi-card.active { box-shadow: 0 0 0 2px #462814; transform: translateY(-2px); }
+.search-row { background-color: #ffffff; border-radius: 30px; padding: 8px 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; width: 100%; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12); }
+.search-input { flex: 1; min-width: 250px; padding: 8px 12px; font-size: 14px; color: #3d2214; background-color: transparent; border: none; outline: none; }
+.filter-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-btn { padding: 7px 14px; border: 1px solid #e2dcd5; border-radius: 20px; background-color: #faf7f2; color: #3d2214; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+.filter-btn:hover { background-color: #efe7dc; }
+.filter-btn.active { background-color: #3d2214; color: #faf6f0; border-color: #3d2214; }
+.filter-btn.ok.active { background-color: #1e7e34; border-color: #1e7e34; color: #ffffff; }
+.filter-btn.bajo.active { background-color: #d97706; border-color: #d97706; color: #ffffff; }
+.filter-btn.sin-stock.active { background-color: #c81e1e; border-color: #c81e1e; color: #ffffff; }
+.section-subtitle { background-color: #ffffff; padding: 18px 26px 12px 26px; border-radius: 16px 16px 0 0; margin-bottom: -16px; font-size: 15px; font-weight: 800; color: #3d2214; border-left: 4px solid #c8963e; box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06); }
+table { display: block; width: 100%; max-height: calc(100vh - 340px); overflow-y: auto; border-collapse: collapse; background-color: #ffffff; border-radius: 0 0 16px 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16); }
+thead, tbody, tr { display: table; width: 100%; table-layout: fixed; }
+thead { position: sticky; top: 0; z-index: 5; }
+thead tr { background-color: #462814; color: #ffffff; }
+th { text-align: left; padding: 14px 18px; font-size: 13px; font-weight: 700; color: #ffffff; }
+td { padding: 14px 18px; font-size: 13.5px; color: #3d2214; border-bottom: 1px solid #f2ece4; }
+tbody tr:nth-child(even) { background-color: #fcf9f5; }
+tbody tr:hover { background-color: #f5ede3; }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.badge-sin-stock { background-color: #fde8e8; color: #c81e1e; }
+.badge-bajo { background-color: #fef6d8; color: #9f6000; }
+.badge-ok { background-color: #e6f6ec; color: #1e7e34; }
+.btn-modificar { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background-color: #462814; color: #ffffff; text-decoration: none; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 10px rgba(70, 40, 20, 0.35); transition: all 0.2s ease; }
+.btn-modificar:hover { background-color: #2e190b; transform: translateY(-2px); box-shadow: 0 6px 14px rgba(70, 40, 20, 0.45); }
+.btn-modificar:active { transform: translateY(0); }
+@media print {
+    @page { margin: 10mm; }
+    body, html { background: #fff !important; height: auto !important; overflow: visible !important; display: block !important; padding: 0 !important; margin: 0 !important; }
+    .sidebar, .top-tabs, .kpi-grid, .search-row, .header-btns, .btn-print, .btn-excel, button, aside { display: none !important; }
+    .main-wrapper, .content-card, .table-box { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
+    .card-header { box-shadow: none !important; padding: 0 0 10px 0 !important; border-bottom: 2px solid #3d2214 !important; border-radius: 0 !important; margin-bottom: 12px !important; }
+    .section-subtitle { box-shadow: none !important; padding: 0 0 8px 0 !important; margin-bottom: 6px !important; }
+    table { display: table !important; width: 100% !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border-collapse: collapse !important; }
+    thead { display: table-header-group !important; }
+    tbody { display: table-row-group !important; }
+    tr { display: table-row !important; break-inside: avoid !important; }
+    th, td { display: table-cell !important; border: 1px solid #ccc !important; padding: 8px !important; font-size: 11.5px !important; color: #000 !important; }
+    th { background-color: #3d2214 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    th:last-child, td:last-child { display: none !important; }
+}
+</style>
 
-        body {
-            min-height: 100vh;
-            background: #fdfbf7;
-            color: #3e2723;
-        }
 
-        .sidebar {
-            position: fixed;
-            inset: 0 auto 0 0;
-            width: 260px;
-            padding-top: 20px;
-            background: #3e2723;
-            color: #fff;
-            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.08);
-        }
-
-        .sidebar-header {
-            margin-bottom: 24px;
-            padding: 0 20px 20px;
-            border-bottom: 1px solid #5d4037;
-            text-align: center;
-        }
-
-        .sidebar-header h2 {
-            color: #ffb74d;
-            font-size: 24px;
-            font-weight: 600;
-            letter-spacing: 1px;
-        }
-
-        .sidebar-menu {
-            list-style: none;
-        }
-
-        .sidebar-menu a {
-            display: block;
-            padding: 15px 25px;
-            border-left: 4px solid transparent;
-            color: #d7ccc8;
-            font-size: 16px;
-            text-decoration: none;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .sidebar-menu a:hover,
-        .sidebar-menu a:focus-visible,
-        .sidebar-menu a.active {
-            border-left-color: #ffb74d;
-            background: #4e342e;
-            color: #fff;
-            outline: none;
-        }
-
-        .btn-regresar {
-            position: fixed;
-            bottom: 18px;
-            left: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            color: #d7ccc8;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .btn-regresar:hover,
-        .btn-regresar:focus-visible {
-            background: #4e342e;
-            color: #ffb74d;
-            outline: 2px solid #ffb74d;
-            outline-offset: 2px;
-        }
-
-        .btn-regresar svg {
-            width: 32px;
-            height: 32px;
-            fill: none;
-            stroke: currentColor;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            stroke-width: 2;
-        }
-
-        .main-content {
-            width: calc(100% - 260px);
-            margin-left: 260px;
-            padding: clamp(28px, 6vw, 64px);
-        }
-
-        .stage-tools {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-around;
-            gap: 12px 24px;
-            margin-bottom: 24px;
-            padding: 16px 20px;
-            border-radius: 10px;
-            background: #ffb74d;
-            color: #3e2723;
-            font-weight: 600;
-        }
-
-        .stage-tools a {
-            display: inline-flex;
-            align-items: center;
-            min-height: 42px;
-            padding: 10px 16px;
-            border: 2px solid transparent;
-            border-radius: 8px;
-            color: #3e2723;
-            text-align: center;
-            text-decoration: none;
-            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-        }
-
-        .stage-tools a:hover,
-        .stage-tools a:focus-visible,
-        .stage-tools a[aria-current="page"] {
-            border-color: #ffb74d;
-            background: #3e2723;
-            color: #fff;
-            outline: none;
-        }
-
-        .content-card {
-            width: 100%;
-            padding: clamp(24px, 5vw, 42px);
-            border: 1px solid #eadcc9;
-            border-radius: 16px;
-            background: #fff;
-            box-shadow: 0 10px 28px rgba(62, 39, 35, 0.08);
-        }
-
-        .inventory-heading {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 22px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #d7b36a;
-        }
-
-        .inventory-heading h1 {
-            margin: 0;
-            color: #3e2723;
-            font-size: clamp(1.5rem, 3vw, 2rem);
-        }
-
-        .inventory-actions {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .inventory-actions [hidden] {
-            display: none !important;
-        }
-
-        .delete-button {
-            border: 0;
-            border-radius: 6px;
-            padding: 8px 12px;
-            background: #d9534f;
-            color: #fff;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-        }
-
-        .delete-button:hover,
-        .delete-button:focus-visible {
-            background: #c9302c;
-        }
-
-        .delete-button:active {
-            transform: scale(0.98);
-        }
-
-        .row-checkbox {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: #e07a5f;
-        }
-
-        .inventory-table:not(.is-selecting) .selection-column {
-            display: none;
-        }
-
-        .print-button {
-            padding: 10px 16px;
-            border: 0;
-            border-radius: 8px;
-            background: #3e2723;
-            color: #fff;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .print-button:hover,
-        .print-button:focus-visible {
-            background: #7a442a;
-        }
-
-        .search-controls {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .inventory-search {
-            flex: 1;
-            min-width: 0;
-            margin-bottom: 0;
-            padding: 13px 18px;
-            border: 2px solid #d7b36a;
-            border-radius: 25px;
-            color: #3e2723;
-            font: inherit;
-        }
-
-        .edit-mode-control {
-            display: inline-flex;
-            flex: 0 0 auto;
-            align-items: center;
-            gap: 8px;
-            color: #5d4037;
-            font-size: 0.9rem;
-            font-weight: 700;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-
-        .edit-mode-toggle {
-            position: relative;
-            width: 40px;
-            height: 23px;
-            margin: 0;
-            border: 1px solid #a99a8a;
-            border-radius: 999px;
-            appearance: none;
-            background: #d7ccc8;
-            cursor: pointer;
-            transition: background-color 0.2s ease, border-color 0.2s ease;
-        }
-
-        .edit-mode-toggle::before {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 17px;
-            height: 17px;
-            border-radius: 50%;
-            background: #fff;
-            content: "";
-            transition: transform 0.2s ease;
-        }
-
-        .edit-mode-toggle:checked {
-            border-color: #267343;
-            background: #267343;
-        }
-
-        .edit-mode-toggle:checked::before {
-            transform: translateX(17px);
-        }
-
-        .edit-mode-toggle:focus-visible {
-            outline: 3px solid rgba(38, 115, 67, 0.3);
-            outline-offset: 2px;
-        }
-
-        .inventory-table-wrap {
-            overflow-x: auto;
-            padding: 16px;
-            border: 1px solid #f0e5d7;
-            border-radius: 10px;
-        }
-
-        .inventory-table-wrap h2 {
-            margin-bottom: 14px;
-            padding-left: 10px;
-            border-left: 4px solid #d7b36a;
-            color: #5d4037;
-            font-size: 1.15rem;
-        }
-
-        .inventory-table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        .inventory-table th,
-        .inventory-table td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #eee4da;
-            white-space: nowrap;
-        }
-
-        .inventory-table th {
-            background: #f5efe7;
-            color: #3e2723;
-        }
-
-        .cancel-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            min-height: 36px;
-            padding: 7px 11px;
-            border: 1px solid transparent;
-            border-radius: 7px;
-            font: inherit;
-            font-size: 0.9rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .cancel-button {
-            border-color: #d6c6b7;
-            background: #fff;
-            color: #5d4037;
-        }
-
-        .cancel-button:hover,
-        .cancel-button:focus-visible {
-            background: #f5efe7;
-        }
-
-        .edit-field {
-            width: 100%;
-            min-width: 90px;
-            padding: 8px;
-            border: 1px solid #d7b36a;
-            border-radius: 6px;
-            color: #3e2723;
-            font: inherit;
-        }
-
-        .edit-field:focus {
-            outline: 2px solid rgba(215, 179, 106, 0.35);
-        }
-
-        .edit-error {
-            display: none;
-            padding: 12px 0 0;
-            color: #9c2f25;
-            font-weight: 600;
-        }
-
-        .empty-search {
-            display: none;
-            padding: 18px 10px;
-            color: #79551a;
-            text-align: center;
-        }
-
-        .content-card h1 {
-            margin-bottom: 14px;
-            color: #3e2723;
-            font-size: clamp(1.7rem, 4vw, 2.4rem);
-        }
-
-        .content-card p {
-            color: #5d4037;
-            font-size: 1.05rem;
-            line-height: 1.7;
-        }
-
-        @media (max-width: 700px) {
-            .sidebar {
-                position: static;
-                width: 100%;
-                padding-top: 14px;
-            }
-
-            .sidebar-header {
-                margin-bottom: 10px;
-                padding-bottom: 14px;
-            }
-
-            .sidebar-menu {
-                display: flex;
-                overflow-x: auto;
-                padding-bottom: 8px;
-            }
-
-            .sidebar-menu li {
-                flex: 0 0 auto;
-            }
-
-            .sidebar-menu a {
-                padding: 12px 16px;
-                border-left: 0;
-                border-bottom: 3px solid transparent;
-                font-size: 14px;
-            }
-
-            .sidebar-menu a:hover,
-            .sidebar-menu a:focus-visible,
-            .sidebar-menu a.active {
-                border-bottom-color: #ffb74d;
-            }
-
-            .main-content {
-                width: 100%;
-                margin-left: 0;
-                padding: 24px 16px;
-            }
-        }
-
-        @media print {
-            .sidebar,
-            .stage-tools,
-            .search-controls,
-            .print-button,
-            .inventory-actions {
-                display: none !important;
-            }
-
-            .main-content {
-                width: 100%;
-                margin: 0;
-                padding: 0;
-            }
-
-            .content-card {
-                border: 0;
-                box-shadow: none;
-            }
-        }
-    </style>
 </head>
 <body>
+
     <aside class="sidebar">
-        <div class="sidebar-header">
-            <h2>🥖 BakeStock</h2>
+        <div class="brand">🥖 Pan panel</div>
+        <a href="Utensilios.php?seccion=<?php echo urlencode($seccion); ?>" class="nav-btn active">⚙ Ver Utensilios</a>
+        <a href="eventos.php" class="nav-btn">📋 Tabla de eventos</a>
+
+        <div class="menu-label">Añadir al inventario</div>
+        <a href="anadir.php?seccion=<?php echo urlencode($seccion); ?>" class="nav-btn">+ Agregar Artículo</a>
+
+        <div class="menu-label">Acciones críticas</div>
+        <a href="eliminar.php?seccion=<?php echo urlencode($seccion); ?>" class="nav-btn danger">🗑 Eliminar Producto</a>
+
+        <div style="margin-top: auto;">
+            <a href="menu.php" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 15px; margin-bottom: 8px; color: #E6CCB2; background-color: rgba(255, 255, 255, 0.06); border: 1px solid rgba(212, 163, 115, 0.25); border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; transition: 0.3s;" onmouseover="this.style.backgroundColor='rgba(212, 163, 115, 0.2)'; this.style.color='#FFFFFF';" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.06)'; this.style.color='#E6CCB2';">
+     Salir a portada
+</a>
+
+<a href="login.php?cerrar=1" class="nav-btn">Cerrar Sesión</a>
         </div>
-        <nav aria-label="Menú principal">
-            <ul class="sidebar-menu">
-                <?php foreach ($secciones as $id => $datos): ?>
-                    <li>
-                        <a
-                            href="Utensilios.php?seccion=<?php echo urlencode($id); ?>"
-                            class="<?php echo $id === $seccionActual ? 'active' : ''; ?>"
-                            <?php echo $id === $seccionActual ? 'aria-current="page"' : ''; ?>
-                        ><?php echo htmlspecialchars($datos['etiqueta'], ENT_QUOTES, 'UTF-8'); ?></a>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        </nav>
-        <a class="btn-regresar" href="clasificacion.php" aria-label="Regresar a clasificación" title="Regresar a clasificación">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M19 12H5M12 19l-7-7 7-7"></path>
-            </svg>
-        </a>
     </aside>
 
-    <main class="main-content">
-        <section class="content-card" aria-labelledby="page-title">
-                <div class="inventory-heading">
-                    <div class="inventory-actions">
-                        <button class="delete-button" type="button" id="btn-eliminar-seleccion">🗑️ Eliminar</button>
-                        <button class="cancel-button" type="button" id="cancelar-eliminacion" hidden>Cancelar</button>
-                    </div>
-                    <h1 id="page-title">Control de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h1>
-                    <button class="print-button" type="button" onclick="window.print()">🖨️ Imprimir hoja</button>
-                </div>
-                <div class="search-controls">
-                    <input
-                        class="inventory-search"
-                        id="inventory-search"
-                        type="search"
-                        placeholder="🔍 Escribe para buscar en <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>..."
-                        aria-label="Buscar en el inventario de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
-                    >
-                    <label class="edit-mode-control" for="edit-mode-toggle">
-                        <span>Modo edición</span>
-                        <input class="edit-mode-toggle" id="edit-mode-toggle" type="checkbox" role="switch" aria-label="Activar modo de edición">
-                    </label>
-                </div>
-                <div class="inventory-table-wrap">
-                    <h2>Listado activo de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h2>
-                    <table class="inventory-table">
-                        <thead>
-                            <tr>
-                                <th class="selection-column" style="width: 40px; text-align: center;"></th>
-                                <th>Nombre del artículo</th>
-                                <th>Cantidad total</th>
-                                <th>Cantidad actual</th>
-                                <th>Notas / Ubicación</th>
-                                <th>Fecha de Registro</th>
-                            </tr>
-                        </thead>
-                        <tbody id="inventory-rows">
-                            <tr
-                                class="inventory-row"
-                                data-storage-key="bakestock-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
-                                data-deleted-key="bakestock-eliminado-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
-                                data-default-name="<?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
-                                data-registration-date="<?php echo htmlspecialchars($fechaRegistro, ENT_QUOTES, 'UTF-8'); ?>"
-                            >
-                                <td class="selection-column" style="text-align: center;">
-                                    <input type="checkbox" class="row-checkbox" aria-label="Seleccionar <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>">
-                                </td>
-                                <td class="item-name"><?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></td>
-                                <td class="item-stock">—</td>
-                                <td class="item-minimum">—</td>
-                                <td class="item-notes">Pendiente de registrar existencias</td>
-                                <td class="item-date"><?php echo htmlspecialchars($fechaRegistro ?: '—', ENT_QUOTES, 'UTF-8'); ?></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <p class="empty-search" id="empty-search" role="status">No se encontraron resultados.</p>
-                    <p class="edit-error" id="edit-error" role="alert"></p>
-                </div>
-        </section>
-    </main>
-        <script>
-            const inventorySearch = document.getElementById('inventory-search');
-            const inventoryRow = document.querySelector('.inventory-row');
-            const editError = document.getElementById('edit-error');
-            const editModeToggle = document.getElementById('edit-mode-toggle');
-            const itemName = inventoryRow.querySelector('.item-name');
-            const itemStock = inventoryRow.querySelector('.item-stock');
-            const itemMinimum = inventoryRow.querySelector('.item-minimum');
-            const itemDate = inventoryRow.querySelector('.item-date');
-            const itemNotes = inventoryRow.querySelector('.item-notes');
-            let savedItem = null;
-            const today = () => {
-                const now = new Date();
-                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            };
-            const deleteButton = document.getElementById('btn-eliminar-seleccion');
-            const cancelDeleteButton = document.getElementById('cancelar-eliminacion');
-            const inventoryTable = document.querySelector('.inventory-table');
-            let selectionMode = false;
-            let itemDeleted = false;
+    <div class="main-wrapper">
+        <nav class="top-tabs">
+            <a href="Utensilios.php?seccion=cocina+caliente" class="tab-link <?php echo $seccion === 'cocina caliente' ? 'active' : ''; ?>">Cocina caliente</a>
+            <a href="Utensilios.php?seccion=panaderia" class="tab-link <?php echo $seccion === 'panaderia' ? 'active' : ''; ?>">Panadería</a>
+            <a href="Utensilios.php?seccion=reposteria" class="tab-link <?php echo $seccion === 'reposteria' ? 'active' : ''; ?>">Repostería</a>
+        </nav>
 
-            function setSelectionMode(enabled) {
-                selectionMode = enabled;
-                inventoryTable.classList.toggle('is-selecting', enabled);
-                deleteButton.textContent = enabled ? '🗑️ Eliminar seleccionados' : '🗑️ Eliminar';
-                cancelDeleteButton.hidden = !enabled;
-                if (!enabled) {
-                    document.querySelectorAll('.row-checkbox').forEach((checkbox) => {
-                        checkbox.checked = false;
-                    });
-                }
+        <main class="content-card">
+            <div class="card-header">
+                <h1>Control de <?php echo htmlspecialchars($tituloActual); ?></h1>
+                <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="exportarExcel()" style="background-color: #1e7e34; color: #ffffff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;">📥 Exportar Excel</button>
+                <button class="btn-print" onclick="window.print()">🖨 Imprimir hoja</button>
+            </div>
+            </div>
+
+            <!-- 4 Tarjetas KPI -->
+             <!-- 4 Tarjetas KPI -->
+<div class="kpi-grid">
+    <div class="kpi-card total active" data-estado="todos">
+        <span class="kpi-title">TOTAL DE ARTÍCULOS</span>
+        <span class="kpi-number"><?php echo ($countOk + $countBajo + $countSinStock); ?></span>
+    </div>
+
+    <div class="kpi-card ok" data-estado="ok">
+        <span class="kpi-title">✅ EN ORDEN (OK)</span>
+        <span class="kpi-number"><?php echo $countOk; ?></span>
+    </div>
+
+    <div class="kpi-card bajo" data-estado="stock bajo">
+        <span class="kpi-title">🟡 STOCK BAJO</span>
+        <span class="kpi-number"><?php echo $countBajo; ?></span>
+    </div>
+
+    <div class="kpi-card sin-stock" data-estado="sin stock">
+        <span class="kpi-title">⚠️ SIN STOCK</span>
+        <span class="kpi-number"><?php echo $countSinStock; ?></span>
+    </div>
+</div>
+
+                        <div class="search-row">
+                <input type="text" id="buscador" class="search-input" placeholder="🔍 Escribe para buscar en <?php echo htmlspecialchars($tituloActual); ?>...">
+            </div>
+
+            <div class="section-subtitle">Listado activo de <?php echo htmlspecialchars($tituloActual); ?></div>
+
+            <table>
+<thead>
+    <tr>
+        <th style="width: 21%;">Nombre del artículo</th>
+        <th style="width: 10%;">Entrada</th>
+        <th style="width: 10%;">Disponibles</th>
+        <th style="width: 11%;">En uso</th>
+        <th style="width: 13%;">Estado</th>
+        <th style="width: 14%;">Notas</th>
+        <th style="width: 11%;">Fecha de Registro</th>
+        <th style="width: 10%; text-align: center;">Acción</th>
+    </tr>
+</thead>
+<tbody id="cuerpoTabla">
+    <?php if (count($filasTabla) > 0): ?>
+        <?php foreach ($filasTabla as $fila): ?>
+             <?php
+                $entrada     = intval($fila['cantidad_ideal']);  // Total que existe
+                $disponibles = intval($fila['cantidad_actual']); // Los que están libres hoy
+                $en_uso      = $entrada - $disponibles;          // Los que están ocupados
+                if ($en_uso < 0) { $en_uso = 0; }
+            ?>
+            <tr>
+                <td><strong><?php echo htmlspecialchars($fila['nombre_articulo']); ?></strong></td>
+                <td><?php echo $entrada; ?></td>
+                <td><strong><?php echo $disponibles; ?></strong></td>
+                <td><?php echo $en_uso; ?></td>
+                <td>
+                    <?php if ($disponibles === 0): ?>
+                        <span class="badge badge-sin-stock">⚠️ SIN STOCK</span>
+                    <?php elseif ($disponibles < $entrada): ?>
+                        <span class="badge badge-bajo">🟡 STOCK BAJO</span>
+                    <?php else: ?>
+                        <span class="badge badge-ok">✅ OK</span>
+                    <?php endif; ?>
+                </td>
+                <td><?php echo htmlspecialchars($fila['notas_ubicacion']); ?></td>
+                <td><?php echo date('d/m/Y', strtotime($fila['fecha_registro'])); ?></td>
+                <td style="text-align: center;">
+  <a href="editar.php?id=<?php echo $fila['id']; ?>" class="btn-modificar">✏️ Modificar</a>
+
+                   </td>
+
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 20px; color: #8c7b70;">
+                                No hay utensilios registrados en <strong><?php echo htmlspecialchars($tituloActual); ?></strong> todavía.
+                            </td>
+                        </tr>
+
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const buscador = document.getElementById('buscador');
+    const botonesFiltro = document.querySelectorAll('.kpi-card');
+    let estadoActivo = 'todos';
+
+    function filtrarTabla() {
+        const textoOriginal = buscador ? buscador.value.trim() : "";
+        const textoFiltro = textoOriginal.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        const tbody = document.querySelector('#cuerpoTabla') || document.querySelector('table tbody');
+        if (!tbody) return;
+
+        const filas = tbody.querySelectorAll('tr:not(#filaSinResultados)');
+        let visibles = 0;
+
+        filas.forEach(function(fila) {
+            if (fila.cells.length < 2) return; // Ignora filas vacías
+            const textoFila = fila.textContent.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const coincideTexto = textoFila.includes(textoFiltro);
+            const coincideEstado = (estadoActivo === 'todos') || textoFila.includes(estadoActivo);
+
+            if (coincideTexto && coincideEstado) {
+                fila.style.display = '';
+                visibles++;
+            } else {
+                fila.style.display = 'none';
             }
+        });
 
-            deleteButton.addEventListener('click', () => {
-                if (!selectionMode) {
-                    setSelectionMode(true);
-                    return;
-                }
-
-                const selectedRows = document.querySelectorAll('.row-checkbox:checked');
-                if (selectedRows.length === 0) {
-                    alert('Selecciona primero las casillas de los artículos que quieres eliminar.');
-                    return;
-                }
-                if (!confirm(`¿Seguro que quieres eliminar los ${selectedRows.length} artículos seleccionados?`)) {
-                    setSelectionMode(false);
-                    return;
-                }
-
-                try {
-                    selectedRows.forEach((checkbox) => {
-                        const row = checkbox.closest('.inventory-row');
-                        if (!row) return;
-                        localStorage.setItem(row.dataset.deletedKey, 'true');
-                        localStorage.removeItem(row.dataset.storageKey);
-                        row.remove();
-                        if (row === inventoryRow) {
-                            savedItem = null;
-                            itemDeleted = true;
-                        }
-                    });
-                    setSelectionMode(false);
-                    const hasRows = document.querySelectorAll('.inventory-row').length > 0;
-                    if (!hasRows) {
-                        document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
-                        document.getElementById('empty-search').style.display = 'block';
-                    }
-                    deleteButton.disabled = !hasRows;
-                } catch (error) {
-                    console.error('No se pudo eliminar el artículo del inventario.', error);
-                    editError.textContent = 'No se pudo eliminar el artículo guardado en este navegador.';
-                    editError.style.display = 'block';
-                }
-            });
-
-            cancelDeleteButton.addEventListener('click', () => setSelectionMode(false));
-
-            function showItem(item) {
-                itemName.textContent = item.name;
-                itemStock.textContent = item.stock === null ? '—' : item.stock;
-                itemMinimum.textContent = item.minimum === null ? '—' : item.minimum;
-                itemDate.textContent = item.fFecha_registro || inventoryRow.dataset.registrationDate || '—';
-                itemNotes.textContent = item.notes || '—';
+        // Mostrar u ocultar mensaje de error si no hay resultados
+        let filaMensaje = document.getElementById('filaSinResultados');
+        if (visibles === 0 && filas.length > 0) {
+            if (!filaMensaje) {
+                filaMensaje = document.createElement('tr');
+                filaMensaje.id = 'filaSinResultados';
+                filaMensaje.innerHTML = `<td colspan="8" style="width: 100%; text-align: center; padding: 26px; color: #c81e1e; font-weight: 700; background-color: #fef2f2; font-size: 14px;"></td>`;
+                tbody.appendChild(filaMensaje);
             }
+            filaMensaje.querySelector('td').textContent = textoOriginal !== '' 
+                ? `⚠️ Error: El artículo "${textoOriginal}" no se encuentra registrado en esta sección del inventario.`
+                : `⚠️ No hay artículos con ese estado en esta sección.`;
+            filaMensaje.style.display = '';
+        } else if (filaMensaje) {
+            filaMensaje.style.display = 'none';
+        }
+    }
 
-            try {
-                if (localStorage.getItem(inventoryRow.dataset.deletedKey) === 'true') {
-                    inventoryRow.remove();
-                    itemDeleted = true;
-                    const hasRows = document.querySelectorAll('.inventory-row').length > 0;
-                    if (!hasRows) {
-                        document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
-                        document.getElementById('empty-search').style.display = 'block';
-                    }
-                    deleteButton.disabled = !hasRows;
-                } else {
-                    const storedItem = localStorage.getItem(inventoryRow.dataset.storageKey);
-                    if (storedItem !== null) {
-                        const parsedItem = JSON.parse(storedItem);
-                        if (
-                            typeof parsedItem.name !== 'string'
-                            || (parsedItem.stock !== null && !Number.isInteger(parsedItem.stock))
-                            || (parsedItem.minimum !== null && !Number.isInteger(parsedItem.minimum))
-                            || typeof parsedItem.notes !== 'string'
-                            || (parsedItem.fFecha_registro !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(parsedItem.fFecha_registro))
-                        ) {
-                            throw new Error('Los datos guardados para este artículo no son válidos.');
-                        }
-                        savedItem = parsedItem;
-                        showItem(savedItem);
-                    }
-                }
-            } catch (error) {
-                console.error('No se pudieron cargar los datos guardados del inventario.', error);
-                editError.textContent = 'No se pudieron cargar los datos guardados. Revisa el almacenamiento del navegador.';
-                editError.style.display = 'block';
-            }
+    if (buscador) {
+        buscador.addEventListener('input', filtrarTabla);
+    }
 
-            function setEditing(isEditing) {
-                editModeToggle.checked = isEditing;
-                deleteButton.disabled = isEditing || itemDeleted;
-                if (isEditing) {
-                    setSelectionMode(false);
-                }
-            }
+    botonesFiltro.forEach(function(boton) {
+        boton.addEventListener('click', function() {
+            botonesFiltro.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            estadoActivo = (this.getAttribute('data-estado') || 'todos').toLowerCase();
+            filtrarTabla();
+        });
+    });
+});
 
-            function startEditing() {
-                editError.style.display = 'none';
-                if (itemDeleted) {
-                    document.getElementById('inventory-rows').append(inventoryRow);
-                    itemName.textContent = inventoryRow.dataset.defaultName;
-                    itemStock.textContent = '—';
-                    itemMinimum.textContent = '—';
-                    itemDate.textContent = today();
-                    itemNotes.textContent = 'Pendiente de registrar existencias';
-                    inventoryRow.hidden = false;
-                    itemDeleted = false;
-                    document.getElementById('empty-search').style.display = 'none';
-                }
-                const current = savedItem || {
-                    name: itemName.textContent,
-                    stock: '',
-                    minimum: '',
-                    notes: '',
-                    fFecha_registro: inventoryRow.dataset.registrationDate || today()
-                };
-                itemName.innerHTML = '';
-                itemStock.innerHTML = '';
-                itemMinimum.innerHTML = '';
-                itemNotes.innerHTML = '';
-                itemDate.innerHTML = '';
+// Función global para el botón verde (onclick="exportarExcel()")
+function exportarExcel() {
+    const tabla = document.querySelector('table');
+    if (!tabla) return;
 
-                const fields = [
-                    [itemName, 'name', current.name, 'text'],
-                    [itemStock, 'stock', current.stock ?? '', 'number'],
-                    [itemMinimum, 'minimum', current.minimum ?? '', 'number'],
-                    [itemNotes, 'notes', current.notes, 'text'],
-                    [itemDate, 'fFecha_registro', current.fFecha_registro || inventoryRow.dataset.registrationDate || today(), 'date']
-                ];
-                fields.forEach(([cell, name, value, type]) => {
-                    const input = document.createElement('input');
-                    input.className = 'edit-field editable-value';
-                    input.name = name;
-                    input.type = type;
-                    input.value = value;
-                    if (type === 'number') {
-                        input.min = '0';
-                        input.step = '1';
-                        input.placeholder = '0';
-                    }
-                    cell.replaceChildren(input);
-                });
-                setEditing(true);
-                inventoryRow.querySelector('[name="name"]').focus();
-            }
+    let csv = [];
+    const filas = tabla.querySelectorAll('tr');
 
-            async function saveEditing() {
-                const name = inventoryRow.querySelector('[name="name"]').value.trim();
-                const stockValue = inventoryRow.querySelector('[name="stock"]').value;
-                const minimumValue = inventoryRow.querySelector('[name="minimum"]').value;
-                const notes = inventoryRow.querySelector('[name="notes"]').value.trim();
-                const fFecha_registro = inventoryRow.querySelector('[name="fFecha_registro"]').value;
-                const stock = stockValue === '' ? null : Number(stockValue);
-                const minimum = minimumValue === '' ? null : Number(minimumValue);
+    filas.forEach(function(fila) {
+        if (fila.style.display === 'none' || fila.id === 'filaSinResultados') return;
 
-                if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(fFecha_registro) || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
-                    editError.textContent = 'Escribe un nombre, una fecha válida y cantidades enteras iguales o mayores que cero.';
-                    editError.style.display = 'block';
-                    editModeToggle.checked = true;
-                    return false;
-                }
+        const celdas = fila.querySelectorAll('th, td');
+        let datosFila = [];
 
-                const updatedItem = { name, stock, minimum, notes, fFecha_registro };
-                try {
-                    const response = await fetch('Utensilios.php?action=guardar-fecha', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, fFecha_registro })
-                    });
-                    const result = await response.json();
-                    if (!response.ok || result.status !== 'success') {
-                        throw new Error(result.message || 'No se pudo guardar la fecha en la base de datos.');
-                    }
-                    localStorage.setItem(inventoryRow.dataset.storageKey, JSON.stringify(updatedItem));
-                    localStorage.removeItem(inventoryRow.dataset.deletedKey);
-                } catch (error) {
-                    console.error('No se pudieron guardar los cambios del inventario.', error);
-                    editError.textContent = 'No se pudieron guardar los cambios en la base de datos y el navegador.';
-                    editError.style.display = 'block';
-                    editModeToggle.checked = true;
-                    return false;
-                }
+        for (let i = 0; i < celdas.length - 1; i++) {
+            let texto = celdas[i].innerText.replace(/(\r\n|\n|\r)/gm, " ").trim();
+            datosFila.push('"' + texto.replace(/"/g, '""') + '"');
+        }
+        csv.push(datosFila.join(','));
+    });
 
-                savedItem = updatedItem;
-                showItem(savedItem);
-                editError.style.display = 'none';
-                setEditing(false);
-                return true;
-            }
+    const titulo = document.querySelector('h1')?.innerText.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, '').trim().replace(/\s+/g, '_') || 'Inventario';
+    const fecha = new Date().toISOString().slice(0, 10);
 
-            editModeToggle.addEventListener('change', () => {
-                if (editModeToggle.checked) {
-                    startEditing();
-                } else {
-                    saveEditing();
-                }
-            });
+    const blob = new Blob(["\uFEFF" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const enlace = document.createElement('a');
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = `${titulo}_BakeStock_${fecha}.csv`;
+    
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+}
+</script>
 
-            inventorySearch.addEventListener('input', () => {
-                const query = inventorySearch.value.trim().toLocaleLowerCase();
-                let visibleRows = 0;
 
-                document.querySelectorAll('.inventory-row').forEach((row) => {
-                    const matches = row.textContent.toLocaleLowerCase().includes(query);
-                    row.hidden = !matches;
-                    if (matches) visibleRows++;
-                });
-
-                document.getElementById('empty-search').style.display = visibleRows ? 'none' : 'block';
-            });
-        </script>
 </body>
 </html>

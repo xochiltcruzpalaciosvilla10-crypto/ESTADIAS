@@ -1,295 +1,297 @@
 <?php
-$tipo = 'insumos';
-$seccion = $_GET['seccion'] ?? 'secos';
-$herramienta = $_GET['herramienta'] ?? '0';
-
-if (!is_string($seccion) || $seccion === '') {
-    $seccion = 'secos';
+session_start();
+$conexion = new mysqli("localhost", "root", "", "utensilios");
+if ($conexion->connect_error) {
+    die("Error de conexión: " . $conexion->connect_error);
 }
-if (!is_string($herramienta) || !ctype_digit($herramienta)) {
-    $herramienta = '0';
+$conexion->set_charset("utf8mb4");
+
+// Detectar en qué sección estábamos (Cocina caliente, Panadería o Repostería)
+$seccion_actual = $_GET['seccion'] ?? 'cocina caliente';
+if ($seccion_actual === 'cocina+caliente') {
+    $seccion_actual = 'cocina caliente';
 }
 
-$urlRegreso = 'insumos.php?' . http_build_query([
-    'seccion' => $seccion,
-    'herramienta' => $herramienta,
-]);
+$mensaje_error = "";
+$nombre_previo = "";
+$total_previo  = 1;
+$actual_previo = 1;
+$notas_previas = "";
+$fecha_previa  = date('Y-m-d');
+
+// CUANDO EL USUARIO PRESIONA "GUARDAR PRODUCTO"
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nombre  = trim($_POST['nombre_articulo']);
+    $total   = intval($_POST['cantidad_ideal']);
+    $actual  = intval($_POST['cantidad_actual']);
+    $notas   = trim($_POST['notas_ubicacion']);
+    $fecha   = $_POST['fecha_registro'];
+    $seccion = $_POST['seccion'];
+
+    // Guardamos lo que escribió por si hay error y no tenga que volver a escribir todo
+    $nombre_previo  = $nombre;
+    $total_previo   = $total;
+    $actual_previo  = $actual;
+    $notas_previas  = $notas;
+    $fecha_previa   = $fecha;
+    $seccion_actual = $seccion;
+
+    // 1. REVISAR SI EL ARTÍCULO YA EXISTE EN CUALQUIERA DE LAS 3 SECCIONES
+    $sql_verificar = "SELECT seccion FROM equipo_menor WHERE LOWER(TRIM(nombre_articulo)) = LOWER(?)";
+    $stmt_verificar = $conexion->prepare($sql_verificar);
+    $stmt_verificar->bind_param("s", $nombre);
+    $stmt_verificar->execute();
+    $resultado_verificar = $stmt_verificar->get_result();
+
+    if ($resultado_verificar->num_rows > 0) {
+        // Obtenemos la sección donde ya está guardado
+        $fila_existente = $resultado_verificar->fetch_assoc();
+        
+        // Traducimos el nombre interno a un texto bonito con acentos
+        $nombres_bonitos = [
+            'cocina caliente' => 'Cocina caliente',
+            'panaderia'       => 'Panadería',
+            'reposteria'      => 'Repostería'
+        ];
+        $sec_bd = $fila_existente['seccion'];
+        $nombre_seccion = $nombres_bonitos[$sec_bd] ?? ucfirst($sec_bd);
+
+        // ¡YA EXISTE! No guardamos nada y mostramos exactamente en qué pestaña está
+        $mensaje_error = "⚠️ El artículo <strong>\"" . htmlspecialchars($nombre) . "\"</strong> ya está registrado en la sección de <strong>" . $nombre_seccion . "</strong>. No se guardó para evitar duplicados.";
+    } else {
+        // 2. NO EXISTE: LO GUARDAMOS EN LA BASE DE DATOS
+        if ($actual > $total) {
+            $actual = $total;
+        }
+
+        $sql_insertar = "INSERT INTO equipo_menor (nombre_articulo, cantidad_ideal, cantidad_actual, notas_ubicacion, fecha_registro, seccion) 
+                         VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt_insertar = $conexion->prepare($sql_insertar);
+        $stmt_insertar->bind_param("siisss", $nombre, $total, $actual, $notas, $fecha, $seccion);
+
+        if ($stmt_insertar->execute()) {
+            // 3. CONEXIÓN CON LA TABLA EVENTOS (Esto es lo que faltaba)
+            $conexion->query("CREATE TABLE IF NOT EXISTS eventos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                usuario VARCHAR(100) NOT NULL DEFAULT 'Desconocido',
+                accion VARCHAR(30) NOT NULL,
+                seccion VARCHAR(50) NOT NULL DEFAULT 'general',
+                descripcion TEXT NOT NULL,
+                fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+            $usuario_ev = $_SESSION['usuario'] ?? $_SESSION['nombre'] ?? 'Administrador';
+            $accion_ev  = "AGREGAR";
+            $desc_ev    = "Se agregó nuevo artículo: '$nombre' (Entrada: $total, Disponibles: $actual)";
+
+            $sql_ev  = "INSERT INTO eventos (usuario, accion, seccion, descripcion, fecha_hora) VALUES (?, ?, ?, ?, NOW())";
+            $stmt_ev = $conexion->prepare($sql_ev);
+
+            if ($stmt_ev) {
+                $stmt_ev->bind_param("ssss", $usuario_ev, $accion_ev, $seccion, $desc_ev);
+                if (!$stmt_ev->execute()) {
+                    die("Error al registrar en eventos: " . $stmt_ev->error);
+                }
+            } else {
+                die("Error al preparar consulta eventos: " . $conexion->error);
+            }
+
+            // 4. REGRESAR AL INVENTARIO
+            header("Location: Utensilios.php?seccion=" . urlencode($seccion));
+            exit();
+        } else {
+            $mensaje_error = "Error al guardar en la base de datos: " . $conexion->error;
+        }
+    }
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Añadir artículo | BakeStock</title>
+    <title>Agregar Artículo | BakeStock</title>
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
         body {
-            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #9e8a78;
             margin: 0;
-            padding: 32px 16px;
-            background: #fdfbf7;
-            color: #3e2723;
+            padding: 30px 40px;
         }
-
-        .form-card {
-            width: min(100%, 680px);
-            margin: 0 auto;
-            padding: clamp(24px, 5vw, 40px);
-            border: 1px solid #f0e5d7;
-            border-radius: 14px;
-            background: #fff;
-            box-shadow: 0 8px 24px rgba(62, 39, 35, 0.08);
-        }
-
-        h1 {
-            margin: 0 0 8px;
-            font-size: clamp(1.6rem, 4vw, 2rem);
-        }
-
-        .form-intro {
-            margin: 0 0 24px;
-            color: #6d554b;
-            line-height: 1.6;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 18px;
-        }
-
-        .form-field {
-            display: grid;
-            gap: 7px;
-        }
-
-        .form-field.full-width {
-            grid-column: 1 / -1;
-        }
-
-        label {
-            color: #5d4037;
-            font-weight: 700;
-        }
-
-        input,
-        select,
-        textarea {
-            width: 100%;
-            min-height: 44px;
-            padding: 10px 12px;
-            border: 1px solid #d7b36a;
-            border-radius: 7px;
-            background: #fff;
-            color: #3e2723;
-            font: inherit;
-        }
-
-        textarea {
-            min-height: 92px;
-            resize: vertical;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: 3px solid rgba(215, 179, 106, 0.3);
-            outline-offset: 1px;
-        }
-
-        .form-error {
-            display: none;
-            margin: 16px 0 0;
-            color: #9c2f25;
-            font-weight: 700;
-        }
-
-        .form-actions {
+        .top-bar {
+            background-color: #fdf8f2;
+            border-radius: 12px;
+            padding: 16px 30px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 24px;
-        }
-
-        .form-actions button,
-        .form-actions a {
-            display: inline-flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            min-height: 44px;
-            padding: 10px 16px;
-            border: 0;
-            border-radius: 8px;
-            font: inherit;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            max-width: 1150px;
+            margin: 0 auto 30px auto;
+        }
+        .top-bar .left-label {
             font-weight: 700;
+            color: #462814;
+            font-size: 16px;
+        }
+        .top-bar h1 {
+            margin: 0;
+            font-size: 20px;
+            color: #462814;
+            font-weight: 700;
+        }
+        .btn-volver {
+            background-color: #d6a472;
+            color: #462814;
             text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .btn-volver:hover {
+            background-color: #c5915e;
+        }
+        .form-card {
+            background-color: #ffffff;
+            max-width: 440px;
+            margin: 0 auto;
+            padding: 32px 36px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        }
+        .alerta-duplicado {
+            background-color: #fee2e2;
+            border-left: 4px solid #dc2626;
+            color: #991b1b;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 18px;
+            line-height: 1.4;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 6px;
+            font-weight: 700;
+            color: #462814;
+            font-size: 13px;
+        }
+        label:first-of-type {
+            margin-top: 0;
+        }
+        input, select {
+            width: 100%;
+            padding: 11px 14px;
+            background-color: #fbf7f3;
+            border: 1px solid #eadfd5;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+            color: #3d2c1e;
+            font-family: inherit;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #b08256;
+            background-color: #ffffff;
+        }
+        .btn-guardar {
+            width: 100%;
+            margin-top: 24px;
+            background-color: #462814;
+            color: #ffffff;
+            border: none;
+            padding: 13px;
+            border-radius: 8px;
             cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: background 0.2s;
         }
-
-        .save-button {
-            background: #3e2723;
-            color: #fff;
-        }
-
-        .save-button:hover,
-        .save-button:focus-visible {
-            background: #7a442a;
-        }
-
-        .cancel-link {
-            border: 1px solid #d6c6b7 !important;
-            background: #fff;
-            color: #5d4037;
-        }
-
-        @media (max-width: 520px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .form-field.full-width {
-                grid-column: auto;
-            }
+        .btn-guardar:hover {
+            background-color: #321b0c;
         }
     </style>
 </head>
 <body>
-    <main class="form-card">
-        <h1>Añadir artículo</h1>
-        <p class="form-intro">
-            Agrega un registro nuevo al listado de Insumos.
-            Captura los datos disponibles; las cantidades pueden dejarse vacías.
-        </p>
-        <form id="add-item-form" novalidate>
-            <div class="form-grid">
-                <div class="form-field full-width">
-                    <label for="item-name">Nombre del artículo</label>
-                    <input id="item-name" name="name" type="text" maxlength="120" required autocomplete="off">
-                </div>
-                <div class="form-field">
-                    <label for="item-minimum">Cantidad actual</label>
-                    <input id="item-minimum" name="minimum" type="number" min="0" step="1" inputmode="numeric">
-                </div>
-                <div class="form-field">
-                    <label for="item-unit">Unidad de medida</label>
-                    <select id="item-unit" name="unit">
-                        <option>Gramos (g)</option>
-                        <option>Kilogramos (kg)</option>
-                        <option>Libras (lb)</option>
-                        <option>Onzas (oz)</option>
-                        <option>Mililitros (ml)</option>
-                        <option>Litros (L)</option>
-                        <option>Paquetes (paqs)</option>
-                        <option selected>Piezas (pz)</option>
-                    </select>
-                </div>
-                <div class="form-field">
-                    <label for="item-date">Fecha de Registro</label>
-                    <input id="item-date" name="fFecha_registro" type="date" value="<?php echo htmlspecialchars(date('Y-m-d'), ENT_QUOTES, 'UTF-8'); ?>" required>
-                </div>
-                <div class="form-field full-width">
-                    <label for="item-notes">Notas / Ubicación</label>
-                    <textarea id="item-notes" name="notes" maxlength="500"></textarea>
-                </div>
+
+    <div class="top-bar">
+        <span class="left-label">Añadir</span>
+        <h1>Agregar Nuevo Producto</h1>
+        <a href="Utensilios.php?seccion=<?php echo urlencode($seccion_actual); ?>" class="btn-volver">← Cancelar y regresar</a>
+    </div>
+
+    <div class="form-card">
+        
+        <?php if (!empty($mensaje_error)): ?>
+            <div class="alerta-duplicado">
+                <?php echo $mensaje_error; ?>
             </div>
-            <p class="form-error" id="form-error" role="alert"></p>
-            <div class="form-actions">
-                <button class="save-button" type="submit">Guardar</button>
-                <a class="cancel-link" href="<?php echo htmlspecialchars($urlRegreso, ENT_QUOTES, 'UTF-8'); ?>">Cancelar</a>
-            </div>
+        <?php endif; ?>
+
+        <form method="POST">
+            <label>Nombre del artículo:</label>
+            <input type="text" name="nombre_articulo" value="<?php echo htmlspecialchars($nombre_previo); ?>" placeholder="Ej. Batidor de globo" required>
+
+            <label>Entrada:</label>
+            <input type="number" name="cantidad_ideal" min="1" value="<?php echo $total_previo; ?>" required>
+
+            <label>Disponibles:</label>
+            <input type="number" name="cantidad_actual" min="0" value="<?php echo $actual_previo; ?>" required>
+
+            <label>Notas, ubicación o estado:</label>
+            <input type="text" name="notas_ubicacion" value="<?php echo htmlspecialchars($notas_previas); ?>" placeholder="Opcional">
+
+            <label>Fecha de registro:</label>
+            <input type="date" name="fecha_registro" value="<?php echo htmlspecialchars($fecha_previa); ?>" required>
+
+            <label>Guardar en la pestaña:</label>
+            <select name="seccion">
+                <option value="cocina caliente" <?php if($seccion_actual == 'cocina caliente') echo 'selected'; ?>>Cocina caliente</option>
+                <option value="panaderia" <?php if($seccion_actual == 'panaderia') echo 'selected'; ?>>Panadería</option>
+                <option value="reposteria" <?php if($seccion_actual == 'reposteria') echo 'selected'; ?>>Repostería</option>
+            </select>
+
+            <button type="submit" class="btn-guardar">Guardar Producto</button>
         </form>
-    </main>
+    </div>
+
     <script>
-        const form = document.getElementById('add-item-form');
-        const formError = document.getElementById('form-error');
-        const inventorySection = <?php echo json_encode($seccion, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-        const inventoryTool = <?php echo json_encode($herramienta); ?>;
-        const inventoryListKey = `bakestock-listado-insumos-${inventorySection}-${inventoryTool}`;
-        const measureUnits = [
-            'Gramos (g)',
-            'Kilogramos (kg)',
-            'Libras (lb)',
-            'Onzas (oz)',
-            'Mililitros (ml)',
-            'Litros (L)',
-            'Piezas (pz)'
-        ];
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputTotal = document.getElementById('cantidad_ideal');
+        const inputActual = document.getElementById('cantidad_actual');
+        if (!inputTotal || !inputActual) return;
 
-        form.addEventListener('submit', (event) => {
-            event.preventDefault();
-            formError.style.display = 'none';
+        function aplicarCandados() {
+            const total = parseInt(inputTotal.value) || 0;
+            const actual = parseInt(inputActual.value) || 0;
 
-            const formData = new FormData(form);
-            const name = String(formData.get('name') || '').trim();
-            const minimumInput = String(formData.get('minimum') || '');
-            const stock = null;
-            const minimum = minimumInput === '' ? null : Number(minimumInput);
-            const notes = String(formData.get('notes') || '').trim();
-            const unit = String(formData.get('unit') || '');
-            const fFecha_registro = String(formData.get('fFecha_registro') || '');
+            inputActual.max = total;
 
-            if (
-                !name
-                || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))
-                || !measureUnits.includes(unit)
-                || !/^\d{4}-\d{2}-\d{2}$/.test(fFecha_registro)
-            ) {
-                formError.textContent = 'Escribe el nombre y utiliza cantidades enteras iguales o mayores que cero.';
-                formError.style.display = 'block';
-                return;
+            if (actual < 0) {
+                inputActual.value = 0;
             }
-
-            try {
-                const storedIds = localStorage.getItem(inventoryListKey);
-                const ids = storedIds === null ? [] : JSON.parse(storedIds);
-                if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) {
-                    throw new Error('El listado guardado no tiene un formato válido.');
-                }
-
-                const id = typeof crypto.randomUUID === 'function'
-                    ? crypto.randomUUID()
-                    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                const item = { id, name, stock, minimum, notes, unit, fFecha_registro };
-
-                fetch('insumos.php?action=guardar', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        storage_key: `bakestock-articulo-${id}`,
-                        name,
-                        stock,
-                        minimum,
-                        unidad: unit,
-                        notes,
-                        fFecha_registro
-                    })
-                })
-                    .then(async (response) => {
-                        const result = await response.json();
-                        if (!response.ok || result.status !== 'success') {
-                            throw new Error(result.message || 'No se pudo guardar en la base de datos.');
-                        }
-
-                        localStorage.setItem(`bakestock-articulo-${id}`, JSON.stringify(item));
-                        ids.push(id);
-                        localStorage.setItem(inventoryListKey, JSON.stringify(ids));
-                        window.location.href = <?php echo json_encode($urlRegreso, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-                    })
-                    .catch((error) => {
-                        console.error('No se pudo guardar el insumo.', error);
-                        formError.textContent = 'No se pudo guardar en la base de datos. Revisa la conexión e inténtalo de nuevo.';
-                        formError.style.display = 'block';
-                    });
-            } catch (error) {
-                console.error('No se pudo agregar el artículo al listado.', error);
-                formError.textContent = 'No se pudo guardar el artículo en este navegador. Revisa el almacenamiento e inténtalo de nuevo.';
-                formError.style.display = 'block';
+            if (actual > total) {
+                inputActual.value = total;
             }
+        }
+
+        // Al escribir el total, iguala automáticamente la cantidad actual y aplica el límite
+        inputTotal.addEventListener('input', function() {
+            const total = parseInt(this.value) || 0;
+            if (total < 1 && this.value !== '') this.value = 1;
+            inputActual.value = parseInt(this.value) || 0;
+            aplicarCandados();
         });
+
+        // Al escribir directo en cantidad actual, frena si se pasa del total o pone negativo
+        inputActual.addEventListener('input', aplicarCandados);
+
+        aplicarCandados();
+    });
     </script>
 </body>
 </html>

@@ -1,1197 +1,462 @@
 <?php
-// ==========================================
-// 1. CONFIGURACIÓN Y CONEXIÓN A LA BASE DE DATOS
-// ==========================================
-$db_host = 'localhost';
-$db_user = 'root'; // Cambia si tienes usuario
-$db_pass = '';     // Cambia si tienes contraseña
-$db_name = 'insumos'; // <-- CAMBIA ESTO POR EL NOMBRE DE TU BASE DE DATOS
+session_start();
+date_default_timezone_set('America/Mexico_City');
+$conexion = new mysqli("localhost", "root", "", "bakestock_insumos");
+if ($conexion->connect_error) { die("Error de conexión: " . $conexion->connect_error); }
+$conexion->set_charset("utf8mb4");
 
-try {
-    $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("<div style='padding:20px; background:#fde4e1; color:#9c2f25; font-family:sans-serif;'>
-            <strong>Error de conexión a la Base de Datos:</strong> " . htmlspecialchars($e->getMessage()) . "
-         </div>");
+// Crear tabla enfocada en abastecimiento y compras de panadería
+$checkCol = $conexion->query("SHOW COLUMNS FROM insumos LIKE 'stock_maximo'");
+if ($checkCol && $checkCol->num_rows === 0) {
+    $conexion->query("DROP TABLE IF EXISTS insumos");
 }
 
-// ==========================================
-// 2. ARREGLO DE SECCIONES GENERALES
-// ==========================================
-$secciones = [
-    'inicio' => [
-        'etiqueta' => 'Inicio',
-        'titulo' => 'Bienvenido al panel de insumos',
-        'descripcion' => 'Selecciona una etapa del proceso de panadería en el menú para consultar su información.',
-    ],
-    'secos' => [
-        'etiqueta' => 'Insumos secos y masivos',
-        'titulo' => 'Insumos secos y masivos',
-        'herramientas' => [
-            'Harina de trigo',
-            'Azúcar',
-            'Sal',
-            'Sémola',
-            'Fécula',
-        ],
-    ],
-    'levadurantes' => [
-        'etiqueta' => 'Insumo levadurante y químicos',
-        'titulo' => 'Insumo levadurante y químicos',
-        'herramientas' => [
-            'Levadura seca/fresca',
-            'Polvo para hornear',
-            'Bicarbonato',
-        ],
-    ],
-    'grasas' => [
-        'etiqueta' => 'Materias grasas',
-        'titulo' => 'Materias grasas',
-        'herramientas' => [
-            'Mantequilla',
-            'Margarina',
-            'Aceite vegetal',
-            'Manteca',
-        ],
-    ],
-    'liquidos' => [
-        'etiqueta' => 'Líquidos y frescos',
-        'titulo' => 'Líquidos y frescos',
-        'herramientas' => [
-            'Huevo',
-            'Leche',
-            'Crema',
-            'Yogurt',
-        ],
-    ],
-    'sabores' => [
-        'etiqueta' => 'Aditivos, sabores y decoración',
-        'titulo' => 'Aditivos, sabores y decoración',
-        'herramientas' => [
-            'Esencias',
-            'Colorantes',
-            'Semillas',
-            'Frutas secas',
-            'Chispas',
-        ],
-    ],
-    'suministros' => [
-        'etiqueta' => 'Insumos y suministros',
-        'titulo' => 'Insumos y suministros',
-        'herramientas' => [
-            'Bolsas',
-            'Cajas',
-            'Capacillos',
-            'Productos de limpieza',
-        ],
-    ],
-];
+$conexion->query("CREATE TABLE IF NOT EXISTS insumos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_insumo VARCHAR(150) NOT NULL,
+    categoria VARCHAR(60) NOT NULL DEFAULT 'Harinas y Secos',
+    unidad_medida VARCHAR(30) NOT NULL DEFAULT 'Kg',
+    stock_minimo DECIMAL(10,2) NOT NULL DEFAULT 10.00,
+    stock_maximo DECIMAL(10,2) NOT NULL DEFAULT 50.00,
+    stock_actual DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    costo_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    proveedor VARCHAR(100) NULL,
+    fecha_caducidad DATE NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-$seccionActual = $_GET['seccion'] ?? 'secos';
-if (!is_string($seccionActual) || !isset($secciones[$seccionActual])) {
-    $seccionActual = 'secos';
-}
-$seccion = $secciones[$seccionActual];
-$herramientaSeleccionada = null;
-if (
-    isset($_GET['herramienta'])
-    && is_string($_GET['herramienta'])
-    && ctype_digit($_GET['herramienta'])
-    && isset($seccion['herramientas'][(int) $_GET['herramienta']])
-) {
-    $herramientaSeleccionada = (int) $_GET['herramienta'];
-} elseif (!empty($seccion['herramientas'])) {
-    $herramientaSeleccionada = 0;
-}
-// ==========================================
-// 3. PROCESAMIENTO AJAX PARA GUARDAR EN LA BD
-// ==========================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'guardar') {
-    header('Content-Type: application/json');
-    try {
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-               // Consulta preparada apuntando a inventario_insumos con la unidad_medida
-        $stmt = $pdo->prepare("INSERT INTO inventario_insumos (storage_key, nombre_articulo, stock_actual, minimo_requerido, unidad_medida, notas, fecha_registro)
-                                VALUES (:key, :nombre, :stock, :minimo, :unidad, :notas, :fecha)
-                                ON DUPLICATE KEY UPDATE 
-                                nombre_articulo = :nombre, stock_actual = :stock, minimo_requerido = :minimo, unidad_medida = :unidad, notas = :notas, fecha_registro = :fecha");
-        
-        $stmt->execute([
-            ':key'    => $input['storage_key'],
-            ':nombre' => $input['name'],
-            ':stock'  => $input['stock'],
-            ':minimo' => $input['minimum'],
-            ':unidad' => $input['unidad'],
-            ':notas'  => $input['notes'],
-            ':fecha'  => $input['fFecha_registro']
-        ]);
-        
-        echo json_encode(['status' => 'success']);
-        exit;
-    } catch (Exception $e) {
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-        exit;
+// 1. CREAR TABLA KARDEX SI NO EXISTE
+$conexion->query("CREATE TABLE IF NOT EXISTS kardex_insumos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario VARCHAR(100) NOT NULL DEFAULT 'Admin',
+    tipo_movimiento VARCHAR(30) NOT NULL,
+    insumo VARCHAR(150) NOT NULL,
+    cantidad VARCHAR(50) NOT NULL,
+    motivo TEXT NOT NULL,
+    fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+$alerta_sistema = "";
+$usuario_activo = $_SESSION['usuario'] ?? $_SESSION['nombre'] ?? 'Encargado';
+
+// 2. PROCESAR FORMULARIOS DE LOS MODALES (AGREGAR, MOVIMIENTO O ELIMINAR)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_modal'])) {
+    $accion = $_POST['accion_modal'];
+
+    // A) REGISTRAR NUEVO INSUMO (CON VALIDACIÓN ANTI-DUPLICADOS)
+    if ($accion === 'nuevo_insumo') {
+        $nombre = trim($_POST['nombre_insumo']);
+        $cat    = $_POST['categoria'];
+        $unidad = $_POST['unidad_medida'];
+        $min    = floatval($_POST['stock_minimo']);
+        $max    = floatval($_POST['stock_maximo']);
+        $actual = floatval($_POST['stock_actual']);
+        $costo  = floatval($_POST['costo_unitario']);
+        $prov   = trim($_POST['proveedor']);
+
+        $checkDup = $conexion->prepare("SELECT id FROM insumos WHERE LOWER(TRIM(nombre_insumo)) = LOWER(?)");
+        $checkDup->bind_param("s", $nombre);
+        $checkDup->execute();
+        if ($checkDup->get_result()->num_rows > 0) {
+            $alerta_sistema = "<div style='background:#fee2e2; color:#991b1b; padding:12px 18px; border-radius:10px; border-left:5px solid #dc2626; font-weight:700; font-size:13.5px;'>⚠️ Error: El insumo \"$nombre\" ya existe en el inventario. Usa el botón \"Entrada / Salida\" para sumar mercancía.</div>";
+        } else {
+            $ins = $conexion->prepare("INSERT INTO insumos (nombre_insumo, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, costo_unitario, proveedor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $ins->bind_param("sssdddds", $nombre, $cat, $unidad, $min, $max, $actual, $costo, $prov);
+            if ($ins->execute()) {
+                $cantTxt = "$actual $unidad";
+                $motTxt  = "Alta inicial en bodega (Mín: $min / Máx: $max | Prov: $prov)";
+                $k = $conexion->prepare("INSERT INTO kardex_insumos (usuario, tipo_movimiento, insumo, cantidad, motivo) VALUES (?, 'ALTA', ?, ?, ?)");
+                $k->bind_param("ssss", $usuario_activo, $nombre, $cantTxt, $motTxt);
+                $k->execute();
+                header("Location: insumos.php?msg=ok"); exit();
+            }
+        }
+    }
+
+    // B) REGISTRAR ENTRADA (COMPRA) O SALIDA (PRODUCCIÓN / MERMA)
+    if ($accion === 'movimiento') {
+        $id_ins   = intval($_POST['id_insumo']);
+        $tipo     = $_POST['tipo_mov']; // ENTRADA o SALIDA
+        $cantidad = floatval($_POST['cantidad_mov']);
+        $motivo   = trim($_POST['motivo_mov']);
+
+        $q = $conexion->query("SELECT * FROM insumos WHERE id = $id_ins");
+        if ($q && $item = $q->fetch_assoc()) {
+            $nuevo_stock = ($tipo === 'ENTRADA') ? ($item['stock_actual'] + $cantidad) : max(0, $item['stock_actual'] - $cantidad);
+            $conexion->query("UPDATE insumos SET stock_actual = $nuevo_stock WHERE id = $id_ins");
+
+            $signo = ($tipo === 'ENTRADA') ? "+" : "-";
+            $cantTxt = "$signo$cantidad " . $item['unidad_medida'];
+            $k = $conexion->prepare("INSERT INTO kardex_insumos (usuario, tipo_movimiento, insumo, cantidad, motivo) VALUES (?, ?, ?, ?, ?)");
+            $k->bind_param("sssss", $usuario_activo, $tipo, $item['nombre_insumo'], $cantTxt, $motivo);
+            $k->execute();
+            header("Location: insumos.php?msg=mov"); exit();
+        }
+    }
+
+    // C) ELIMINAR INSUMO DEL CATÁLOGO
+    if ($accion === 'eliminar_insumo') {
+        $id_del = intval($_POST['id_eliminar']);
+        $mot_del = trim($_POST['motivo_eliminar']);
+        $q = $conexion->query("SELECT * FROM insumos WHERE id = $id_del");
+        if ($q && $item = $q->fetch_assoc()) {
+            $conexion->query("DELETE FROM insumos WHERE id = $id_del");
+            $cantTxt = $item['stock_actual'] . " " . $item['unidad_medida'];
+            $k = $conexion->prepare("INSERT INTO kardex_insumos (usuario, tipo_movimiento, insumo, cantidad, motivo) VALUES (?, 'BAJA', ?, ?, ?)");
+            $k->bind_param("ssss", $usuario_activo, $item['nombre_insumo'], $cantTxt, $mot_del);
+            $k->execute();
+            header("Location: insumos.php?msg=del"); exit();
+        }
     }
 }
 
-// 4. CONSULTA DE DATOS DESDE LA TABLA: inventario_insumos
-$db_item = ['stock' => null, 'minimum' => null, 'unidad' => 'Piezas', 'notes' => 'Pendiente de registrar existencias', 'fecha' => ''];
-if ($herramientaSeleccionada !== null) {
-    $current_key = "bakestock-{$seccionActual}-{$herramientaSeleccionada}";
-    $stmt = $pdo->prepare("SELECT * FROM inventario_insumos WHERE storage_key = ?");
-    $stmt->execute([$current_key]);
-    $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($resultado) {
-        $db_item['stock'] = $resultado['stock_actual'];
-        $db_item['minimum'] = $resultado['minimo_requerido'];
-        $db_item['unidad'] = $resultado['unidad_medida'];
-        $db_item['notes'] = $resultado['notes'];
-        $db_item['fecha'] = $resultado['fecha_registro'] ? substr($resultado['fecha_registro'], 0, 10) : '';
+// 3. CONSULTAR HISTORIAL DEL KARDEX PARA LA VENTANA EMERGENTE
+$historialKardex = $conexion->query("SELECT * FROM kardex_insumos ORDER BY fecha_hora DESC, id DESC LIMIT 50");
+
+
+$resultado = $conexion->query("SELECT * FROM insumos ORDER BY (stock_actual <= stock_minimo) DESC, nombre_insumo ASC");
+
+$totalInsumos = 0; $porComprar = 0; $agotados = 0; $presupuestoCompra = 0; $filasTabla = [];
+if ($resultado && $resultado->num_rows > 0) {
+    while ($row = $resultado->fetch_assoc()) {
+        $filasTabla[] = $row;
+        $totalInsumos++;
+        $act = floatval($row['stock_actual']);
+        $min = floatval($row['stock_minimo']);
+        $max = floatval($row['stock_maximo']);
+        $costo = floatval($row['costo_unitario']);
+
+        if ($act <= 0) { $agotados++; }
+        if ($act <= $min) {
+            $porComprar++;
+            $cantidadPedir = max(0, $max - $act);
+            $presupuestoCompra += ($cantidadPedir * $costo);
+        }
     }
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($seccion['titulo'] ?? $seccion['etiqueta'] ?? 'Insumos', ENT_QUOTES, 'UTF-8'); ?> | BakeStock-insumos</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            min-height: 100vh;
-            background: #fdfbf7;
-            color: #3e2723;
-        }
-
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 240px;
-            padding-top: 5px !important;
-            background: #3e2723;
-            color: #fff;
-            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.08);
-        }
-
-        .sidebar-header {
-            margin-bottom: 10px !important;
-            margin-top: 0 !important;
-            padding-top: 0 !important;
-            padding-bottom: 10px !important;
-            border-bottom: 1px solid #5d4037;
-            text-align: center;
-        }
-
-        .sidebar-header h2 {
-            color: #ffb74d;
-            font-size: 24px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            margin-top: 0 !important
-            margin-bottom: 0 !important;
-        }
-
-        .sidebar-menu {
-            list-style: none;
-        }
-
-        .sidebar-menu a {
-            display: block;
-            padding: 15px 25px;
-            border-left: 4px solid transparent;
-            color: #d7ccc8;
-            font-size: 16px;
-            text-decoration: none;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .sidebar-menu a:hover,
-        .sidebar-menu a:focus-visible,
-        .sidebar-menu a.active {
-            border-left-color: #ffb74d;
-            background: #4e342e;
-            color: #fff;
-            outline: none;
-        }
-
-        .btn-regresar {
-            position: fixed;
-            bottom: 18px;
-            left: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            color: #d7ccc8;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .btn-regresar:hover,
-        .btn-regresar:focus-visible {
-            background: #4e342e;
-            color: #ffb74d;
-            outline: 2px solid #ffb74d;
-            outline-offset: 2px;
-        }
-
-        .btn-regresar svg {
-            width: 32px;
-            height: 32px;
-            fill: none;
-            stroke: currentColor;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            stroke-width: 2;
-        }
-
-        .main-content {
-            width: calc(100% - 260px);
-            margin-left: 260px;
-            padding: clamp(28px, 6vw, 64px);
-        }
-
-        .stage-tools {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-around;
-            gap: 12px 24px;
-            margin-bottom: 24px;
-            padding: 16px 20px;
-            border-radius: 10px;
-            background: #ffb74d;
-            color: #3e2723;
-            font-weight: 600;
-        }
-
-        .stage-tools a {
-            display: inline-flex;
-            align-items: center;
-            min-height: 42px;
-            padding: 10px 16px;
-            border: 2px solid transparent;
-            border-radius: 8px;
-            color: #3e2723;
-            text-align: center;
-            text-decoration: none;
-            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-        }
-
-        .stage-tools a:hover,
-        .stage-tools a:focus-visible,
-        .stage-tools a[aria-current="page"] {
-            border-color: #ffb74d;
-            background: #3e2723;
-            color: #fff;
-            outline: none;
-        }
-
-        .content-card {
-            width: 100%;
-            padding: clamp(24px, 5vw, 42px);
-            border: 1px solid #eadcc9;
-            border-radius: 16px;
-            background: #fff;
-            box-shadow: 0 10px 28px rgba(62, 39, 35, 0.08);
-        }
-
-        .inventory-heading {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 22px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #d7b36a;
-        }
-
-        .inventory-heading h1 {
-            margin: 0;
-            color: #3e2723;
-            font-size: clamp(1.5rem, 3vw, 2rem);
-        }
-
-        .inventory-actions {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .inventory-actions [hidden] {
-            display: none !important;
-        }
-
-        .delete-button {
-            border: 0;
-            border-radius: 6px;
-            padding: 8px 12px;
-            background: #d9534f;
-            color: #fff;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-        }
-
-        .delete-button:hover,
-        .delete-button:focus-visible {
-            background: #c9302c;
-        }
-
-        .delete-button:active {
-            transform: scale(0.98);
-        }
-
-        .print-button {
-            padding: 10px 16px;
-            border: 0;
-            border-radius: 8px;
-            background: #3e2723;
-            color: #fff;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .print-button:hover,
-        .print-button:focus-visible {
-            background: #7a442a;
-        }
-
-        .add-item-link {
-            display: inline-flex;
-            align-items: center;
-            white-space: nowrap;
-        }
-
-        .search-controls {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .inventory-search {
-            flex: 1;
-            min-width: 0;
-            margin-bottom: 0;
-            padding: 13px 18px;
-            border: 2px solid #d7b36a;
-            border-radius: 25px;
-            color: #3e2723;
-            font: inherit;
-        }
-
-        .edit-mode-control {
-            display: inline-flex;
-            flex: 0 0 auto;
-            align-items: center;
-            gap: 8px;
-            color: #5d4037;
-            font-size: 0.9rem;
-            font-weight: 700;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-
-        .edit-mode-toggle {
-            position: relative;
-            width: 40px;
-            height: 23px;
-            margin: 0;
-            border: 1px solid #a99a8a;
-            border-radius: 999px;
-            appearance: none;
-            background: #d7ccc8;
-            cursor: pointer;
-            transition: background-color 0.2s ease, border-color 0.2s ease;
-        }
-
-        .edit-mode-toggle::before {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 17px;
-            height: 17px;
-            border-radius: 50%;
-            background: #fff;
-            content: "";
-            transition: transform 0.2s ease;
-        }
-
-        .edit-mode-toggle:checked {
-            border-color: #267343;
-            background: #267343;
-        }
-
-        .edit-mode-toggle:checked::before {
-            transform: translateX(17px);
-        }
-
-        .edit-mode-toggle:focus-visible {
-            outline: 3px solid rgba(38, 115, 67, 0.3);
-            outline-offset: 2px;
-        }
-
-        .inventory-table-wrap {
-            overflow-x: auto;
-            padding: 16px;
-            border: 1px solid #f0e5d7;
-            border-radius: 10px;
-        }
-
-        .inventory-table-wrap h2 {
-            margin-bottom: 14px;
-            padding-left: 10px;
-            border-left: 4px solid #d7b36a;
-            color: #5d4037;
-            font-size: 1.15rem;
-        }
-
-        .inventory-table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        .row-checkbox {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: #e07a5f;
-        }
-
-        .inventory-table:not(.is-selecting) .selection-column {
-            display: none;
-        }
-
-        .inventory-table th,
-        .inventory-table td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #eee4da;
-            white-space: nowrap;
-        }
-
-        .inventory-table th {
-            background: #f5efe7;
-            color: #3e2723;
-        }
-
-        .edit-field {
-            width: 100%;
-            min-width: 90px;
-            padding: 8px;
-            border: 1px solid #d7b36a;
-            border-radius: 6px;
-            color: #3e2723;
-            font: inherit;
-        }
-
-        .edit-field:focus {
-            outline: 2px solid rgba(215, 179, 106, 0.35);
-        }
-
-        .edit-error {
-            display: none;
-            padding: 12px 0 0;
-            color: #9c2f25;
-            font-weight: 600;
-        }
-
-        .empty-search {
-            display: none;
-            padding: 18px 10px;
-            color: #79551a;
-            text-align: center;
-        }
-
-        .content-card h1 {
-            margin-bottom: 14px;
-            color: #3e2723;
-            font-size: clamp(1.7rem, 4vw, 2.4rem);
-        }
-
-        .content-card p {
-            color: #5d4037;
-            font-size: 1.05rem;
-            line-height: 1.7;
-        }
-
-        @media (max-width: 700px) {
-            .sidebar {
-                position: static;
-                width: 100%;
-                padding-top: 14px;
-            }
-
-            .sidebar-header {
-                margin-bottom: 8px;
-                padding-bottom: 10px;
-                border-bottom: 1px solid #5a3723;
-                text-align: center;
-            }
-
-            .sidebar-menu {
-                display: flex;
-                overflow-x: auto;
-                padding-bottom: 8px;
-            }
-
-            .sidebar-menu li {
-                flex: 0 0 auto;
-            }
-
-            .sidebar-menu a {
-                padding: 12px 16px;
-                border-left: 0;
-                border-bottom: 3px solid transparent;
-                font-size: 14px;
-            }
-
-            .sidebar-menu a:hover,
-            .sidebar-menu a:focus-visible,
-            .sidebar-menu a.active {
-                border-bottom-color: #ffb74d;
-            }
-
-            .main-content {
-                width: 100%;
-                margin-left: 0;
-                padding: 24px 16px;
-            }
-        }
-
-        @media print {
-            .sidebar,
-            .stage-tools,
-            .search-controls,
-            .print-button,
-            .inventory-actions {
-                display: none !important;
-            }
-
-            .main-content {
-                width: 100%;
-                margin: 0;
-                padding: 0;
-            }
-
-            .content-card {
-                border: 0;
-                box-shadow: none;
-            }
-        }
-    .btn-guardar-estilo {
-    background-color: #2E7D32; /* Verde oscuro profesional para confirmar guardado */
-    color: #FFFFFF;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: bold;
-    font-size: 0.9rem;
-    cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
+<meta charset="UTF-8">
+<title>Abastecimiento e Insumos | BakeStock</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background: url('fondo.jpg') no-repeat center center fixed; background-size: cover; background-color: #9e8a78; height: 100vh; max-height: 100vh; overflow: hidden; display: flex; padding: 16px; gap: 18px; }
+.sidebar { width: 235px; background: rgba(58, 34, 18, 0.94); backdrop-filter: blur(4px); border-radius: 14px; padding: 22px 15px; display: flex; flex-direction: column; justify-content: space-between; color: #faf6f0; flex-shrink: 0; border: 1.5px solid #d97706; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); }
+.brand { font-size: 20px; font-weight: 800; color: #fbbf24; text-align: center; padding-bottom: 16px; border-bottom: 1.5px solid #d97706; margin-bottom: 18px; }
+.menu-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; color: #fbbf24; margin: 18px 0 8px 6px; font-weight: 700; }
+.nav-btn { display: block; text-decoration: none; color: #f5ebe1; background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(217, 119, 6, 0.4); padding: 11px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 10px; transition: all 0.2s ease; }
+.nav-btn:hover { background-color: rgba(217, 119, 6, 0.22); border-color: #fbbf24; color: #ffffff; }
+.nav-btn.active { background-color: rgba(217, 119, 6, 0.32); border: 1.5px solid #fbbf24; color: #ffffff; font-weight: 700; }
+.nav-btn.danger { color: #f87171; border-color: rgba(248, 113, 113, 0.35); }
+.nav-btn.danger:hover { background-color: rgba(220, 38, 38, 0.2); border-color: #ef4444; }
+.sidebar-bottom { padding-top: 14px; border-top: 1px solid rgba(217, 119, 6, 0.3); }
+.main-wrapper { flex: 1; display: flex; flex-direction: column; gap: 14px; height: 100%; min-height: 0; overflow: hidden; }
+.card-header { background-color: #faf6f0; border-radius: 14px; padding: 16px 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14); border-left: 6px solid #d97706; }
+.badge-modulo { display: inline-block; background-color: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; border: 1px solid #f59e0b; margin-bottom: 4px; }
+.card-header h1 { font-size: 21px; font-weight: 800; color: #3d2214; }
+.header-btns { display: flex; gap: 10px; }
+.btn-top { border: none; padding: 9px 15px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: #ffffff; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transition: 0.2s; }
+.btn-compra { background-color: #d97706; }
+.btn-compra:hover { background-color: #b45309; }
+.btn-excel { background-color: #1e7e34; }
+.btn-excel:hover { background-color: #166534; }
+.btn-print { background-color: #462814; }
+.btn-print:hover { background-color: #2e190b; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.kpi-card { background-color: #faf6f0; border-radius: 12px; padding: 14px 18px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12); border-left: 5px solid #462814; cursor: pointer; transition: 0.15s; user-select: none; }
+.kpi-card.comprar { border-left-color: #d97706; }
+.kpi-card.agotado { border-left-color: #c81e1e; }
+.kpi-card.dinero { border-left-color: #0369a1; cursor: default; }
+.kpi-card:not(.dinero):hover, .kpi-card.active { transform: translateY(-2px); box-shadow: 0 0 0 2px #d97706; }
+.kpi-title { font-size: 11px; font-weight: 700; color: #6b5340; text-transform: uppercase; margin-bottom: 4px; }
+.kpi-value { font-size: 23px; font-weight: 800; color: #3d2214; }
+.kpi-card.comprar .kpi-value { color: #d97706; }
+.kpi-card.agotado .kpi-value { color: #c81e1e; }
+.kpi-card.dinero .kpi-value { color: #0369a1; }
+.search-row { background-color: #ffffff; border-radius: 30px; padding: 8px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12); }
+.search-input { flex: 1; padding: 8px 6px; font-size: 14px; color: #3d2214; background-color: transparent; border: none; outline: none; }
+.cat-select { padding: 7px 14px; border-radius: 20px; border: 1px solid #e2dcd5; background-color: #faf7f2; color: #3d2214; font-size: 12.5px; font-weight: 700; outline: none; cursor: pointer; }
+.section-subtitle { background-color: #ffffff; padding: 16px 26px 12px 26px; border-radius: 16px 16px 0 0; margin-bottom: -14px; font-size: 15px; font-weight: 800; color: #3d2214; border-left: 5px solid #d97706; box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06); display: flex; justify-content: space-between; }
+table { display: block; width: 100%; max-height: calc(100vh - 305px); overflow-y: auto; border-collapse: collapse; background-color: #ffffff; border-radius: 0 0 16px 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16); }
+thead, tbody, tr { display: table; width: 100%; table-layout: fixed; }
+thead { position: sticky; top: 0; z-index: 5; }
+thead tr { background-color: #5c3419; color: #ffffff; }
+th { text-align: left; padding: 13px 12px; font-size: 12px; font-weight: 700; color: #ffffff; }
+td { padding: 12px 12px; font-size: 13px; color: #3d2214; border-bottom: 1px solid #f2ece4; }
+tbody tr:nth-child(even) { background-color: #fdf9f3; }
+tbody tr:hover { background-color: #faeedc; }
+.cat-tag { font-size: 11px; background-color: #f3e8dd; color: #5c3419; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; }
+.badge-agotado { background-color: #fde8e8; color: #c81e1e; }
+.badge-comprar { background-color: #fef3c7; color: #b45309; }
+.badge-ok { background-color: #e6f6ec; color: #1e7e34; }
+.pedir-box { font-weight: 800; color: #b45309; background-color: #fffbeb; padding: 4px 8px; border-radius: 6px; border: 1px dashed #f59e0b; display: inline-block; }
+.btn-mov { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background-color: #462814; color: #ffffff; text-decoration: none; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; transition: 0.2s; }
+.btn-mov:hover { background-color: #d97706; }
+@media print {
+@page { margin: 10mm; }
+body { background: #fff !important; height: auto !important; overflow: visible !important; display: block !important; padding: 0 !important; }
+.sidebar, .kpi-grid, .search-row, .header-btns { display: none !important; }
+.main-wrapper { display: block !important; height: auto !important; overflow: visible !important; }
+table { display: table !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; }
+thead { display: table-header-group !important; }
+tbody { display: table-row-group !important; }
+tr { display: table-row !important; }
+th, td { display: table-cell !important; border: 1px solid #ccc !important; padding: 7px !important; font-size: 11px !important; }
+th:last-child, td:last-child { display: none !important; }
 }
-
-.btn-guardar-estilo:hover {
-    background-color: #1B5E20;
-    transform: translateY(-1px);
-}
-
-#contenedor-guardar {
-    display: none;
-    margin-top: 8px;
-}
-
-.grupo-edicion:has(#edit-mode-toggle:checked) #contenedor-guardar {
-    display: block !important;
-}
-
-.search-controls {
-    align-items: flex-start !important;
-}
-
-/* =========================================================
-   TRANSFORMACIÓN DE BARRA LATERAL A MENÚ HORIZONTAL SUPERIOR
-   ========================================================= */
-.sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: auto !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 60px !important;
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    padding: 8px 25px !important;
-    z-index: 1000 !important;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.25) !important;
-}
-
-/* El logotipo BakeStock a la izquierda */
-.sidebar-header {
-    border-bottom: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    flex-shrink: 0 !important;
-}
-
-/* Los enlaces del menú en fila horizontal */
-.sidebar-menu {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 8px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    flex-wrap: wrap !important;
-}
-
-.sidebar-menu a {
-    padding: 10px 16px !important;
-    font-size: 16px !important;
-    border-left: none !important;
-    border-bottom: 3px solid transparent !important;
-    border-radius: 6px !important;
-    font-weight: 600 !important;
-}
-
-.sidebar-menu a:hover,
-.sidebar-menu a.active {
-    border-bottom-color: #f6b740 !important;
-    background-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-/* El botón de regresar (flechita) a la derecha */
-.btn-regresar {
-    margin-top: 0 !important;
-    padding: 6px 12px !important;
-    position: static !important;
-}
-
-/* Ajustar el contenido principal (barra amarilla y tabla) para ocupar todo el ancho */
-.main-content {
-    width: 100% !important;
-    margin-left: 0 !important;
-    margin-top: 75px !important; /* Espacio para no quedar debajo de la barra café */
-    padding: 20px 30px !important;
-}
-.sidebar-header h2{
-    font-size: 30px !important;
-    font-weight: 800 !important;
-    letter-spacing: 1.5px !important;
-}
-/* =========================================================
-   EFECTO DE LUZ DORADA GIRANDO ALREDEDOR DEL ELEMENTO ACTIVO
-   ========================================================= */
-
-/* Variable animable para el ángulo de giro */
-@property --angulo-giro {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
-}
-
-@keyframes girarBordeDorado {
-    from { --angulo-giro: 0deg; }
-    to { --angulo-giro: 360deg; }
-}
-
-/* Estilo para el enlace seleccionado en el menú café */
-.sidebar-menu a.active {
-    position: relative !important;
-    background-color: #2b180d !important; /* Fondo café oscuro */
-    color: #fff6e0 !important;
-    border: 2px solid transparent !important;
-    border-radius: 8px !important;
-    z-index: 1 !important;
-    overflow: hidden !important;
-}
-
-/* Capa giratoria de luz amarillita/dorada detrás del borde */
-.sidebar-menu a.active::before {
-    content: '' !important;
-    position: absolute !important;
-    inset: -150% !important; /* Más grande para cubrir al girar */
-    background: conic-gradient(
-        from var(--angulo-giro),
-        transparent 0%,
-        transparent 70%,
-        #f6b740 85%,
-        #fff3b0 95%,
-        #f6b740 100%
-    ) !important;
-    animation: girarBordeDorado 6.5s linear infinite !important;
-    z-index: -2 !important;
-}
-
-/* Máscara interna para que solo se vea el borde iluminado y no tape el texto */
-.sidebar-menu a.active::after {
-    content: '' !important;
-    position: absolute !important;
-    inset: 2px !important; /* Grosor de la línea que gira */
-    background-color: #3b2314 !important; /* Mismo color café de la barra */
-    border-radius: 6px !important;
-    z-index: -1 !important;
-}
-.btn-guardar-estilo {
-    background: linear-gradient(135deg, #4A2511 0%, #2C1508 100%) !important;
-    color: #F3E6C6 !important;
-    border: 2px solid #f6b740 !important;
-    box-shadow: 0 0 12px rgba(246, 183, 64, 0.7) !important;
-    padding: 8px 18px !important;
-    border-radius: 8px !important;
-    font-weight: bold !important;
-    cursor: pointer !important;
-}
-
-
 </style>
 </head>
 <body>
-       <aside class="sidebar" style="padding-top: 8px; !important;">
-        <div class="sidebar-header" style="margin-top: 0 !important; padding-bottom: 25px !important; margin-bottom: 25px !important;">
-            <h2  style="margin-top: 0 !important; padding-top: 0 !important;">🥖 BakeStock</h2>
+<aside class="sidebar">
+    <div>
+        <div class="brand">🌾 BakeStock Compras</div>
+        <a href="insumos.php" class="nav-btn active">📦 Almacén y Pedidos</a>
+        <button type="button" onclick="abrirMovimiento(<?php echo $fila['id']; ?>, '<?php echo htmlspecialchars($fila['nombre_insumo'], ENT_QUOTES); ?>', '<?php echo $uni; ?>', <?php echo $act; ?>)" class="btn-mov">🔄 Entrada / Salida</button>
+        <a href="#" onclick="abrirModal('modalKardex'); return false;" class="nav-btn">📋 Bitácora Kardex</a>
+        <div class="menu-label">Gestión de Materia Prima</div>
+        <a href="#" onclick="abrirModal('modalNuevo'); return false;" class="nav-btn">+ Nuevo Insumo</a>
+        <div class="menu-label">Control y Bajas</div>
+        <a href="#" onclick="abrirModal('modalEliminar'); return false;" class="nav-btn danger">🗑️ Eliminar Insumo</a>
+    </div>
+    <div class="sidebar-bottom">
+        <a href="menu.php" class="nav-btn">Salir a Portada</a>
+        <a href="logout.php" class="nav-btn" style="margin-bottom: 0;">Cerrar sesión</a>
+    </div>
+</aside>
+
+<main class="main-wrapper">
+    <?php if (!empty($alerta_sistema)) echo $alerta_sistema; ?>
+
+    <div class="card-header">
+        <div>
+            <span class="badge-modulo">🛒 CONTROL DE ABASTECIMIENTO Y PUNTO DE REORDEN</span>
+            <h1>Inventario de Insumos y Necesidad de Compra</h1>
         </div>
-        <nav aria-label="Menú principal">
-            <ul class="sidebar-menu">
-                <!-- Busca algo muy similar a esto en tu archivo insumos.php -->
-
-                <?php foreach ($secciones as $id => $datos): ?>
-                     <li>
-                        <!-- Forzamos de forma directa la redirección a la herramienta 0 -->
-                        <a
-                            href="insumos.php?seccion=<?php echo urlencode($id); ?>&amp;herramienta=0"
-                            class="<?php echo $id === $seccionActual ? 'active' : ''; ?>"
-                            <?php echo $id === $seccionActual ? 'aria-current="page"' : ''; ?>
-                        ><?php echo htmlspecialchars($datos['etiqueta'], ENT_QUOTES, 'UTF-8'); ?></a>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        </nav>
-        <a class="btn-regresar" href="clasificacion.php" aria-label="Regresar a clasificación" title="Regresar a clasificación">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M19 12H5M12 19l-7-7 7-7"></path>
-            </svg>
-        </a>
-    </aside>
-
-    <main class="main-content">
-        <?php if (!empty($seccion['herramientas'])): ?>
-            <div class="stage-tools" aria-label="Herramientas de <?php echo htmlspecialchars($seccion['etiqueta'], ENT_QUOTES, 'UTF-8'); ?>">
-                <?php foreach ($seccion['herramientas'] as $indice => $herramienta): ?>
-                    <a
-                        href="insumos.php?seccion=<?php echo urlencode($seccionActual); ?>&amp;herramienta=<?php echo $indice; ?>"
-                        <?php echo $herramientaSeleccionada === $indice ? 'aria-current="page"' : ''; ?>
-                    ><?php echo htmlspecialchars($herramienta, ENT_QUOTES, 'UTF-8'); ?></a>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-
-        <section class="content-card" aria-labelledby="page-title">
-            <?php if ($herramientaSeleccionada !== null): ?>
-                <?php $nombreHerramienta = $seccion['herramientas'][$herramientaSeleccionada]; ?>
-                <div class="inventory-heading">
-                    <div class="inventory-actions">
-                        <button class="delete-button" type="button" id="btn-eliminar-seleccion">🗑️ Eliminar</button>
-                        <button class="cancel-button" type="button" id="cancelar-eliminacion" hidden>Cancelar</button>
-                    </div>
-                    <h1 id="page-title">Control de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h1>
-                    <button class="print-button" type="button" onclick="window.print()">🖨️ Imprimir hoja</button>
-                </div>
-                <div class="search-controls">
-                    <input
-                        class="inventory-search"
-                        id="inventory-search"
-                        
-                        type="search"
-                        placeholder="🔍 Escribe para buscar en <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>..."
-                        aria-label="Buscar en el inventario de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
-                    >
-                    <a
-                        class="print-button add-item-link"
-                        href="anadir.php?seccion=<?php echo rawurlencode($seccionActual); ?>&amp;herramienta=<?php echo $herramientaSeleccionada; ?>"
-                    >➕ Agregar artículo</a>
-                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
- <div class="search-controls" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; width: 100%; margin-bottom: 20px;">
-
-    <div class="grupo-edicion" style="display: flex; flex-direction: column; align-items: flex-end;">
-        <label class="edit-mode-control" for="edit-mode-toggle">
-            <span>Modo edición</span>
-            <input class="edit-mode-toggle" id="edit-mode-toggle" type="checkbox" />
-        </label>
-
-        <div id="contenedor-guardar">
-            <button type="button" id="btn-guardar-cambios" class="btn-guardar-estilo">
-                Guardar cambios
-            </button>
+        <div class="header-btns">
+            <button onclick="imprimirOrdenCompra()" class="btn-top btn-compra">🛒 Imprimir Lista de Compra</button>
+            <button onclick="exportarExcel()" class="btn-top btn-excel">📊 Exportar Excel</button>
+            <button onclick="window.print()" class="btn-top btn-print">🖨️ Imprimir Todo</button>
         </div>
     </div>
-</div>
 
-    <div id="contenedor-guardar">
-        <button type="button" id="btn-guardar-cambios" class="btn-guardar-estilo">
-            Guardar cambios
-        </button>
+    <div class="kpi-grid">
+        <div class="kpi-card active" data-filtro="todos">
+            <div class="kpi-title">Total Insumos Registrados</div>
+            <div class="kpi-value"><?php echo $totalInsumos; ?></div>
+        </div>
+        <div class="kpi-card comprar" data-filtro="comprar">
+            <div class="kpi-title">🛒 Urge Comprar (Reorden)</div>
+            <div class="kpi-value"><?php echo $porComprar; ?></div>
+        </div>
+        <div class="kpi-card agotado" data-filtro="agotado">
+            <div class="kpi-title">⚠️ Agotados en Bodega</div>
+            <div class="kpi-value"><?php echo $agotados; ?></div>
+        </div>
+        <div class="kpi-card dinero">
+            <div class="kpi-title">💰 Presupuesto de Compra</div>
+            <div class="kpi-value">$<?php echo number_format($presupuestoCompra, 2); ?></div>
+        </div>
     </div>
-</div>
 
-</div>
-                <div class="inventory-table-wrap">
-                    <h2>Listado activo de <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></h2>
-                    <table class="inventory-table">
-                        <thead>
-                            <tr>
-                                <th class="selection-column" style="width: 40px;"></th>
-                                <th>Nombre del artículo</th>
-                                <th>Cantidad total</th>
-                                <th>Cantidad actual</th>
-                                <th>Unidad_medida</th>
-                                <th>Notas</th>
-                                <th>Fecha de Registro</th>
-                            </tr>
-                        </thead>
-                        <tbody
-                            id="inventory-rows"
-                            data-list-key="bakestock-listado-insumos-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
-                            data-has-unit="true"
-                        >
-                            <tr
-                                class="inventory-row"
-                                data-storage-key="bakestock-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
-                                data-deleted-key="bakestock-eliminado-<?php echo htmlspecialchars($seccionActual, ENT_QUOTES, 'UTF-8'); ?>-<?php echo $herramientaSeleccionada; ?>"
-                                data-default-name="<?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>"
-                                data-registration-date="<?php echo htmlspecialchars($db_item['fecha'], ENT_QUOTES, 'UTF-8'); ?>"
-                            >
-                                <td class="selection-column" style="text-align: center;">
-                                    <input type="checkbox" class="row-checkbox" aria-label="Seleccionar <?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?>">
-                                </td>
-                                <td class="item-name"><?php echo htmlspecialchars($nombreHerramienta, ENT_QUOTES, 'UTF-8'); ?></td>
-                                <td class="item-stock">—</td>
-                                <td class="item-minimum">—</td>
-                                <td class="item-unit">Piezas (pz)</td>
-                                <td class="item-notes">Pendiente de registrar existencias</td>
-                                <td class="item-date">—</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <p class="empty-search" id="empty-search" role="status">No se encontraron resultados.</p>
-                    <p class="edit-error" id="edit-error" role="alert"></p>
-                </div>
+    <div class="search-row">
+        <span>🔍</span>
+        <input type="text" id="buscador" class="search-input" placeholder="Buscar harina, levadura, proveedor...">
+        <select id="filtroCategoria" class="cat-select">
+            <option value="todas">Todas las categorías</option>
+            <option value="Harinas y Secos">Harinas y Secos</option>
+            <option value="Lácteos y Refrigerados">Lácteos y Refrigerados</option>
+            <option value="Grasas y Aceites">Grasas y Aceites</option>
+            <option value="Polvos y Esencias">Polvos y Esencias</option>
+        </select>
+    </div>
+
+    <div class="section-subtitle">
+        <span>Listado de Materia Prima (Ordenado por prioridad de compra)</span>
+        <span style="font-size: 12px; color: #78716c; font-weight: 600;">* Sugerencia calculada para llenar al Stock Máximo</span>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 21%;">Insumo / Proveedor</th>
+                <th style="width: 13%;">Categoría</th>
+                <th style="width: 9%;">Existencia</th>
+                <th style="width: 9%;">Mín / Máx</th>
+                <th style="width: 12%;">A Comprar</th>
+                <th style="width: 10%;">Costo Pedido</th>
+                <th style="width: 12%;">Estado</th>
+                <th style="width: 14%; text-align: center;">Movimiento</th>
+            </tr>
+        </thead>
+        <tbody id="cuerpoTabla">
+            <?php if (count($filasTabla) > 0): ?>
+                <?php foreach ($filasTabla as $fila): ?>
+                    <?php
+                        $act   = floatval($fila['stock_actual']);
+                        $min   = floatval($fila['stock_minimo']);
+                        $max   = floatval($fila['stock_maximo']);
+                        $costo = floatval($fila['costo_unitario']);
+                        $uni   = htmlspecialchars($fila['unidad_medida']);
+
+                        $necesitaCompra = ($act <= $min);
+                        $pedir = $necesitaCompra ? max(0, $max - $act) : 0;
+                        $costoPedido = $pedir * $costo;
+
+                        if ($act <= 0) {
+                            $estadoData = 'agotado comprar';
+                            $badgeHtml  = '<span class="badge badge-agotado">⚠️ AGOTADO</span>';
+                        } elseif ($act <= $min) {
+                            $estadoData = 'comprar';
+                            $badgeHtml  = '<span class="badge badge-comprar">🛒 PEDIR YA</span>';
+                        } else {
+                            $estadoData = 'ok';
+                            $badgeHtml  = '<span class="badge badge-ok">✅ SUFICIENTE</span>';
+                        }
+                    ?>
+                    <tr data-estado="<?php echo $estadoData; ?>" data-categoria="<?php echo htmlspecialchars($fila['categoria']); ?>">
+                        <td>
+                            <strong><?php echo htmlspecialchars($fila['nombre_insumo']); ?></strong><br>
+                            <small style="color:#78716c;">Prov: <?php echo htmlspecialchars($fila['proveedor'] ?: 'General'); ?></small>
+                        </td>
+                        <td><span class="cat-tag"><?php echo htmlspecialchars($fila['categoria']); ?></span></td>
+                        <td><strong><?php echo number_format($act, 2); ?></strong> <?php echo $uni; ?></td>
+                        <td style="color:#6b5340; font-size:12px;"><?php echo number_format($min, 0); ?> / <?php echo number_format($max, 0); ?></td>
+                        <td>
+                            <?php if ($pedir > 0): ?>
+                                <span class="pedir-box">+ <?php echo number_format($pedir, 2); ?> <?php echo $uni; ?></span>
+                            <?php else: ?>
+                                <span style="color:#9ca3af;">—</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($costoPedido > 0): ?>
+                                <strong style="color:#0369a1;">$<?php echo number_format($costoPedido, 2); ?></strong>
+                            <?php else: ?>
+                                <span style="color:#9ca3af;">$0.00</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?php echo $badgeHtml; ?></td>
+                        <td style="text-align: center;">
+                            <a href="movimiento_insumo.php?id=<?php echo $fila['id']; ?>" class="btn-mov">🔄 Entrada / Salida</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
             <?php else: ?>
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 30px; color: #78716c; font-weight: 600;">
+                        Aún no tienes insumos registrados. Haz clic en "+ Nuevo Insumo" en el menú izquierdo para agregar tus ingredientes.
+                    </td>
+                </tr>
             <?php endif; ?>
-        </section>
-    </main>
+        </tbody>
+    </table>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const buscador = document.getElementById('buscador');
+    const selectCat = document.getElementById('filtroCategoria');
+    const tarjetas = document.querySelectorAll('.kpi-card:not(.dinero)');
+    let filtroEstado = 'todos';
 
-    <?php if ($herramientaSeleccionada !== null): ?>
-        <script src="inventario-listado.js"></script>
-        <script>
-            const inventorySearch = document.getElementById('inventory-search');
-            const inventoryRow = document.querySelector('.inventory-row');
-            const editError = document.getElementById('edit-error');
-            const editModeToggle = document.getElementById('edit-mode-toggle');
-            const itemName = inventoryRow.querySelector('.item-name');
-            const itemStock = inventoryRow.querySelector('.item-stock');
-            const itemMinimum = inventoryRow.querySelector('.item-minimum');
-            const itemNotes = inventoryRow.querySelector('.item-notes');
-            const itemUnit = inventoryRow.querySelector('.item-unit');
-            const itemDate = inventoryRow.querySelector('.item-date');
-            let savedItem = null;
-            const today = () => {
-                const now = new Date();
-                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            };
-            const measureUnits = [
-                'Gramos (g)',
-                'Kilogramos (kg)',
-                'Libras (lb)',
-                'Onzas (oz)',
-                'Mililitros (ml)',
-                'Litros (L)',
-                'Piezas (pz)'
-            ];
-            const defaultMeasureUnit = 'Piezas (pz)';
-            const deleteButton = document.getElementById('btn-eliminar-seleccion');
-            const cancelDeleteButton = document.getElementById('cancelar-eliminacion');
-            const inventoryTable = document.querySelector('.inventory-table');
-            let itemDeleted = false;
-            let selectionMode = false;
+    function aplicarFiltros() {
+        const texto = (buscador.value || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const cat = selectCat.value;
+        const tbody = document.getElementById('cuerpoTabla');
+        const filas = tbody.querySelectorAll('tr:not(#filaVacia)');
+        let visibles = 0;
 
-            function setSelectionMode(enabled) {
-                selectionMode = enabled;
-                inventoryTable.classList.toggle('is-selecting', enabled);
-                deleteButton.textContent = enabled ? '🗑️ Eliminar seleccionado' : '🗑️ Eliminar';
-                cancelDeleteButton.hidden = !enabled;
-                editModeToggle.disabled = enabled || itemDeleted;
-                if (!enabled) {
-                    document.querySelectorAll('.row-checkbox').forEach((checkbox) => {
-                        checkbox.checked = false;
-                    });
-                }
+        filas.forEach(fila => {
+            if (fila.cells.length < 2) return;
+            const contenido = fila.textContent.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const estFila = fila.getAttribute('data-estado') || '';
+            const catFila = fila.getAttribute('data-categoria') || '';
+
+            const okTexto = contenido.includes(texto);
+            const okCat = (cat === 'todas') || (catFila === cat);
+            const okEst = (filtroEstado === 'todos') || estFila.includes(filtroEstado);
+
+            if (okTexto && okCat && okEst) {
+                fila.style.display = '';
+                visibles++;
+            } else {
+                fila.style.display = 'none';
             }
+        });
 
-            deleteButton.addEventListener('click', () => {
-                if (!selectionMode) {
-                    setSelectionMode(true);
-                    return;
-                }
-                const selectedRows = document.querySelectorAll('.row-checkbox:checked');
-                if (selectedRows.length === 0) {
-                    alert('Selecciona primero las casillas de los artículos que quieres eliminar.');
-                    return;
-                }
-                if (!confirm(`¿Seguro que quieres eliminar los ${selectedRows.length} artículos seleccionados?`)) {
-                    setSelectionMode(false);
-                    return;
-                }
-
-                try {
-                    selectedRows.forEach((checkbox) => {
-                        const row = checkbox.closest('.inventory-row');
-                        if (!row) return;
-                        localStorage.setItem(row.dataset.deletedKey, 'true');
-                        localStorage.removeItem(row.dataset.storageKey);
-                        if (row.dataset.listId && window.BakeStockAddedItems) {
-                            window.BakeStockAddedItems.remove(row);
-                        }
-                        if (row === inventoryRow) {
-                            savedItem = null;
-                            itemDeleted = true;
-                        }
-                        row.remove();
-                    });
-                    setSelectionMode(false);
-                    const hasRows = document.querySelectorAll('.inventory-row').length > 0;
-                    if (!hasRows) {
-                        document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
-                        document.getElementById('empty-search').style.display = 'block';
-                    }
-                    deleteButton.disabled = !hasRows;
-                } catch (error) {
-                    console.error('No se pudo eliminar el artículo del inventario.', error);
-                    editError.textContent = 'No se pudo eliminar el artículo guardado en este navegador.';
-                    editError.style.display = 'block';
-                }
-            });
-
-            cancelDeleteButton.addEventListener('click', () => setSelectionMode(false));
-
-            function showItem(item) {
-                itemName.textContent = item.name;
-                itemStock.textContent = item.stock === null ? '—' : item.stock;
-                itemMinimum.textContent = item.minimum === null ? '—' : item.minimum;
-                itemUnit.textContent = item.unit;
-                itemDate.textContent = item.fFecha_registro || inventoryRow.dataset.registrationDate || '—';
-                itemNotes.textContent = item.notes || '—';
+        let msg = document.getElementById('filaVacia');
+        if (visibles === 0 && filas.length > 0 && filas[0].cells.length > 1) {
+            if (!msg) {
+                msg = document.createElement('tr');
+                msg.id = 'filaVacia';
+                msg.innerHTML = `<td colspan="8" style="text-align:center; padding:25px; color:#c81e1e; font-weight:700; background:#fef2f2;"></td>`;
+                tbody.appendChild(msg);
             }
+            msg.querySelector('td').textContent = `⚠️ No se encontraron insumos con los filtros seleccionados.`;
+            msg.style.display = '';
+        } else if (msg) {
+            msg.style.display = 'none';
+        }
+    }
 
-            try {
-                if (localStorage.getItem(inventoryRow.dataset.deletedKey) === 'true') {
-                    inventoryRow.remove();
-                    itemDeleted = true;
-                    const hasRows = document.querySelectorAll('.inventory-row').length > 0;
-                    if (!hasRows) {
-                        document.getElementById('empty-search').textContent = 'No hay artículos en este inventario.';
-                        document.getElementById('empty-search').style.display = 'block';
-                    }
-                    deleteButton.disabled = !hasRows;
-                } else {
-                    const storedItem = localStorage.getItem(inventoryRow.dataset.storageKey);
-                    if (storedItem !== null) {
-                        const parsedItem = JSON.parse(storedItem);
-                        if (
-                            typeof parsedItem.name !== 'string'
-                            || (parsedItem.stock !== null && !Number.isInteger(parsedItem.stock))
-                            || (parsedItem.minimum !== null && !Number.isInteger(parsedItem.minimum))
-                            || typeof parsedItem.notes !== 'string'
-                            || (parsedItem.unit !== undefined && !measureUnits.includes(parsedItem.unit))
-                            || (parsedItem.fFecha_registro !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(parsedItem.fFecha_registro))
-                        ) {
-                            throw new Error('Los datos guardados para este artículo no son válidos.');
-                        }
-                        parsedItem.unit = parsedItem.unit || defaultMeasureUnit;
-                        savedItem = parsedItem;
-                        showItem(savedItem);
-                    }
-                }
-            } catch (error) {
-                console.error('No se pudieron cargar los datos guardados del inventario.', error);
-                editError.textContent = 'No se pudieron cargar los datos guardados. Revisa el almacenamiento del navegador.';
-                editError.style.display = 'block';
-            }
+    if (buscador) buscador.addEventListener('input', aplicarFiltros);
+    if (selectCat) selectCat.addEventListener('change', aplicarFiltros);
 
-            function setEditing(isEditing) {
-                editModeToggle.checked = isEditing;
-                deleteButton.disabled = isEditing || itemDeleted;
-                if (isEditing) {
-                    setSelectionMode(false);
-                }
-            }
+    tarjetas.forEach(t => {
+        t.addEventListener('click', function() {
+            tarjetas.forEach(x => x.classList.remove('active'));
+            this.classList.add('active');
+            filtroEstado = this.getAttribute('data-filtro');
+            aplicarFiltros();
+        });
+    });
 
-            function startEditing() {
-                editError.style.display = 'none';
-                if (itemDeleted) {
-                    document.getElementById('inventory-rows').append(inventoryRow);
-                    itemName.textContent = inventoryRow.dataset.defaultName;
-                    itemStock.textContent = '—';
-                    itemMinimum.textContent = '—';
-                    itemUnit.textContent = defaultMeasureUnit;
-                    itemDate.textContent = today();
-                    itemNotes.textContent = 'Pendiente de registrar existencias';
-                    inventoryRow.hidden = false;
-                    itemDeleted = false;
-                    document.getElementById('empty-search').style.display = 'none';
-                }
-                const current = savedItem || {
-                    name: itemName.textContent,
-                    stock: '',
-                    minimum: '',
-                    notes: '',
-                    fFecha_registro: inventoryRow.dataset.registrationDate || today()
-                };
-                itemName.innerHTML = '';
-                itemStock.innerHTML = '';
-                itemMinimum.innerHTML = '';
-                itemNotes.innerHTML = '';
-                itemDate.innerHTML = '';
+    window.imprimirOrdenCompra = function() {
+        tarjetas.forEach(x => x.classList.remove('active'));
+        const cardComprar = document.querySelector('.kpi-card.comprar');
+        if (cardComprar) cardComprar.classList.add('active');
+        filtroEstado = 'comprar';
+        aplicarFiltros();
+        setTimeout(() => {
+            window.print();
+        }, 200);
+    };
+});
 
-                const fields = [
-                    [itemName, 'name', current.name, 'text'],
-                    [itemStock, 'stock', current.stock ?? '', 'number'],
-                    [itemMinimum, 'minimum', current.minimum ?? '', 'number'],
-                    [itemNotes, 'notes', current.notes, 'text'],
-                    [itemDate, 'fFecha_registro', current.fFecha_registro || inventoryRow.dataset.registrationDate || today(), 'date']
-                ];
-                fields.forEach(([cell, name, value, type]) => {
-                    const input = document.createElement('input');
-                    input.className = 'edit-field editable-value';
-                    input.name = name;
-                    input.type = type;
-                    input.value = value;
-                    if (type === 'number') {
-                        input.min = '0';
-                        input.step = '1';
-                        input.placeholder = '0';
-                    }
-                    cell.replaceChildren(input);
-                });
-                const unitSelect = document.createElement('select');
-                unitSelect.className = 'edit-field editable-value';
-                unitSelect.name = 'unit';
-                measureUnits.forEach((unit) => {
-                    const option = document.createElement('option');
-                    option.value = unit;
-                    option.textContent = unit;
-                    unitSelect.append(option);
-                });
-                unitSelect.value = measureUnits.includes(current.unit) ? current.unit : defaultMeasureUnit;
-                itemUnit.replaceChildren(unitSelect);
-                setEditing(true);
-                inventoryRow.querySelector('[name="name"]').focus();
-            }
+function exportarExcel() {
+    const tabla = document.querySelector('table');
+    let csv = [];
+    tabla.querySelectorAll('tr').forEach(fila => {
+        if (fila.style.display === 'none' || fila.id === 'filaVacia' || fila.cells.length < 2) return;
+        const celdas = fila.querySelectorAll('th, td');
+        let datos = [];
+        for (let i = 0; i < celdas.length - 1; i++) {
+            datos.push('"' + celdas[i].innerText.replace(/(\r\n|\n|\r)/gm, " ").trim().replace(/"/g, '""') + '"');
+        }
+        csv.push(datos.join(','));
+    });
 
-            async function saveEditing() {
-                const name = inventoryRow.querySelector('[name="name"]').value.trim();
-                const stockValue = inventoryRow.querySelector('[name="stock"]').value;
-                const minimumValue = inventoryRow.querySelector('[name="minimum"]').value;
-                const unit = inventoryRow.querySelector('[name="unit"]').value;
-                const fFecha_registro = inventoryRow.querySelector('[name="fFecha_registro"]').value;
-                const notes = inventoryRow.querySelector('[name="notes"]').value.trim();
-                const stock = stockValue === '' ? null : Number(stockValue);
-                const minimum = minimumValue === '' ? null : Number(minimumValue);
+    const blob = new Blob(["\uFEFF" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Orden_Compra_Insumos_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+}
 
-                if (!name || !measureUnits.includes(unit) || !/^\d{4}-\d{2}-\d{2}$/.test(fFecha_registro) || (stock !== null && (!Number.isInteger(stock) || stock < 0)) || (minimum !== null && (!Number.isInteger(minimum) || minimum < 0))) {
-                    editError.textContent = 'Escribe un nombre, selecciona una unidad, una fecha válida y cantidades enteras iguales o mayores que cero.';
-                    editError.style.display = 'block';
-                    editModeToggle.checked = true;
-                    return false;
-                }
+function abrirModal(id) {
+    document.getElementById(id).classList.add('abierto');
+}
 
-                const updatedItem = { name, stock, minimum, unit, notes, fFecha_registro };
-                try {
-                    const response = await fetch('insumos.php?action=guardar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            storage_key: inventoryRow.dataset.storageKey,
-                            name,
-                            stock,
-                            minimum,
-                            unidad: unit,
-                            notes,
-                            fFecha_registro
-                        })
-                    });
-                    const result = await response.json();
-                    if (!response.ok || result.status !== 'success') {
-                        throw new Error(result.message || 'No se pudo guardar en la base de datos.');
-                    }
-                    localStorage.setItem(inventoryRow.dataset.storageKey, JSON.stringify(updatedItem));
-                    localStorage.removeItem(inventoryRow.dataset.deletedKey);
-                } catch (error) {
-                    console.error('No se pudieron guardar los cambios del inventario.', error);
-                    editError.textContent = 'No se pudieron guardar los cambios en la base de datos y el navegador.';
-                    editError.style.display = 'block';
-                    editModeToggle.checked = true;
-                    return false;
-                }
+function cerrarModales() {
+    document.querySelectorAll('.modal-fondo').forEach(m => m.classList.remove('abierto'));
+}
 
-                savedItem = updatedItem;
-                showItem(savedItem);
-                editError.style.display = 'none';
-                setEditing(false);
-                return true;
-            }
-
-            editModeToggle.addEventListener('change', () => {
-                if (editModeToggle.checked) {
-                    startEditing();
-                } else {
-                    saveEditing();
-                }
-            });
-
-            inventorySearch.addEventListener('input', () => {
-                const query = inventorySearch.value.trim().toLocaleLowerCase();
-                let visibleRows = 0;
-
-                document.querySelectorAll('.inventory-row').forEach((row) => {
-                    const matches = row.textContent.toLocaleLowerCase().includes(query);
-                    row.hidden = !matches;
-                    if (matches) visibleRows++;
-                });
-
-                document.getElementById('empty-search').style.display = visibleRows ? 'none' : 'block';
-            });
-            
-    <?php endif; ?>
-    <script>
-    document.querySelector('.sidebar').style.setProperty('padding-top', '5px', 'important');
-    document.querySelector('.sidebar-header').style.setProperty('margin-top', '0px', 'important');
-    document.querySelector('.sidebar-header').style.setProperty('padding-top', '0px', 'important');
+function abrirMovimiento(id, nombre, unidad, actual) {
+    document.getElementById('mov_id').value = id;
+    document.getElementById('mov_info').textContent = `Insumo: ${nombre} | Existencia actual: ${actual} ${unidad}`;
+    abrirModal('modalMovimiento');
+}
 </script>
-
-    
 </body>
 </html>
+
