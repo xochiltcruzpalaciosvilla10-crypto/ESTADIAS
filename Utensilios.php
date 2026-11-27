@@ -25,18 +25,24 @@ $titulos = [
     'reposteria'      => 'Repostería'
 ];
 
-$seccion = $_GET['seccion'] ?? 'cocina caliente';
-if ($seccion === 'cocina+caliente' || !isset($titulos[$seccion])) {
-    $seccion = 'cocina caliente';
-}
-$tituloActual = $titulos[$seccion];
+$seccion = $_GET['seccion'] ?? 'todos';
 
-// Consultar únicamente los artículos de la pestaña activa
-$stmt = $conexion->prepare("SELECT * FROM equipo_menor WHERE seccion = ? ORDER BY fecha_registro DESC");
-if (!$stmt) {
-    die("Error SQL: " . $conexion->error);
+if ($seccion === 'todos') {
+    $tituloActual = "Todos los Utensilios";
+    $titulo_vista = "Todos los Utensilios";
+    $placeholder_buscador = "Escribe para buscar en todos los utensilios...";
+    $subtitulo_tabla = "Listado activo de Todos los Utensilios";
+    $stmt = $conexion->prepare("SELECT * FROM equipo_menor ORDER BY id DESC");
+} else {
+    $nombreSeccion = $titulos[$seccion] ?? ucfirst($seccion);
+    $tituloActual = $nombreSeccion;
+    $titulo_vista = "Control de " . $nombreSeccion;
+    $placeholder_buscador = "Escribe para buscar en " . $nombreSeccion . "...";
+    $subtitulo_tabla = "Listado activo de " . $nombreSeccion;
+    $stmt = $conexion->prepare("SELECT * FROM equipo_menor WHERE seccion = ? ORDER BY id DESC");
+    $stmt->bind_param("s", $seccion);
 }
-$stmt->bind_param("s", $seccion);
+
 $stmt->execute();
 $resultado = $stmt->get_result();
 
@@ -64,6 +70,7 @@ if ($resultado && $resultado->num_rows > 0) {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -80,18 +87,18 @@ body { background: url('fondo.jpg') no-repeat center center fixed; background-si
 .sidebar { width: 235px; background: rgba(58, 34, 18, 0.94); backdrop-filter: blur(4px); border-radius: 14px; padding: 22px 15px; display: flex; flex-direction: column; justify-content: space-between; color: #faf6f0; flex-shrink: 0; border: 1.5px solid #c8963e; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); }
 .brand { font-size: 20px; font-weight: 800; color: #e5c384; text-align: center; padding-bottom: 16px; border-bottom: 1.5px solid #c8963e; margin-bottom: 18px; }
 .menu-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; color: #e5c384; margin: 18px 0 8px 6px; font-weight: 700; }
-.nav-btn { display: block; text-decoration: none; color: #f5ebe1; background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(200, 150, 62, 0.35); padding: 11px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 10px; transition: all 0.2s ease; }
+.nav-btn { display: block; text-decoration: none; color: #f5ebe1; background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(200, 150, 62, 0.35); padding: 11px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 10px; transition: all 0.2s ease; cursor: pointer; }
 .nav-btn:hover { background-color: rgba(200, 150, 62, 0.18); border-color: #e5c384; color: #ffffff; }
 .nav-btn.active { background-color: rgba(200, 150, 62, 0.28); border: 1.5px solid #e5c384; color: #ffffff; font-weight: 700; }
 .nav-btn.danger { color: #dc2626; border-color: rgba(200, 150, 62, 0.35); }
 .nav-btn.danger:hover { background-color: rgba(220, 38, 38, 0.18); border-color: #dc2626; }
 .sidebar-bottom { padding-top: 14px; border-top: 1px solid rgba(200, 150, 62, 0.25); }
-.main-wrapper { flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-x: hidden; overflow-y: auto; padding-right: 4px; }
+.main-wrapper { flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: hidden; min-width: 0; }
 .top-tabs { background: rgba(58, 34, 18, 0.88); backdrop-filter: blur(4px); border-radius: 12px; padding: 11px 24px; display: flex; justify-content: center; gap: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
 .tab-link { text-decoration: none; color: #e6d8cc; font-size: 13.5px; font-weight: 600; padding: 7px 20px; border-radius: 8px; transition: 0.2s; }
 .tab-link:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.12); }
 .tab-link.active { background-color: #faf6f0; color: #3d2214; font-weight: 700; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); }
-.content-card { flex: 1; background-color: transparent; padding: 0; box-shadow: none; display: flex; flex-direction: column; gap: 16px; }
+.content-card { flex: 1; background-color: transparent; padding: 0; box-shadow: none; display: flex; flex-direction: column; gap: 16px; min-height: 0; overflow: hidden; }
 .card-header { background-color: #faf6f0; border-radius: 14px; padding: 18px 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14); }
 .card-header h1 { font-size: 22px; font-weight: 800; color: #3d2214; }
 .btn-print, .btn-excel { background-color: #462814; color: #ffffff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15); transition: 0.2s; }
@@ -115,7 +122,7 @@ body { background: url('fondo.jpg') no-repeat center center fixed; background-si
 .filter-btn.bajo.active { background-color: #d97706; border-color: #d97706; color: #ffffff; }
 .filter-btn.sin-stock.active { background-color: #c81e1e; border-color: #c81e1e; color: #ffffff; }
 .section-subtitle { background-color: #ffffff; padding: 18px 26px 12px 26px; border-radius: 16px 16px 0 0; margin-bottom: -16px; font-size: 15px; font-weight: 800; color: #3d2214; border-left: 4px solid #c8963e; box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06); }
-table { display: block; width: 100%; max-height: calc(100vh - 340px); overflow-y: auto; border-collapse: collapse; background-color: #ffffff; border-radius: 0 0 16px 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16); }
+table { display: block; width: 100%; flex: 1; min-height: 0; overflow-y: auto; border-collapse: collapse; background-color: #ffffff; border-radius: 0 0 16px 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16); }
 thead, tbody, tr { display: table; width: 100%; table-layout: fixed; }
 thead { position: sticky; top: 0; z-index: 5; }
 thead tr { background-color: #462814; color: #ffffff; }
@@ -153,7 +160,7 @@ tbody tr:hover { background-color: #f5ede3; }
     height: auto !important;
   }
 
-  .main-wrapper {
+  .main-wrapper, .content-card {
     width: 100% !important;
     overflow: visible;
   }
@@ -223,12 +230,17 @@ tbody tr:hover { background-color: #f5ede3; }
 </style>
 
 
+
 </head>
 <body>
 
     <aside class="sidebar">
         <div class="brand">🥖 Pan panel</div>
-        <a href="Utensilios.php?seccion=<?php echo urlencode($seccion); ?>" class="nav-btn active">⚙ Ver Utensilios</a>
+        <a href="Utensilios.php?seccion=todos" class="nav-btn <?= ($seccion === 'todos') ? 'active' : '' ?>">
+  🍳 Ver Utensilios
+</a>
+
+
         <a href="eventos.php" class="nav-btn">📋 Tabla de eventos</a>
 
         <div class="menu-label">Añadir al inventario</div>
@@ -248,10 +260,11 @@ tbody tr:hover { background-color: #f5ede3; }
 
     <div class="main-wrapper">
         <nav class="top-tabs">
-            <a href="Utensilios.php?seccion=cocina+caliente" class="tab-link <?php echo $seccion === 'cocina caliente' ? 'active' : ''; ?>">Cocina caliente</a>
-            <a href="Utensilios.php?seccion=panaderia" class="tab-link <?php echo $seccion === 'panaderia' ? 'active' : ''; ?>">Panadería</a>
-            <a href="Utensilios.php?seccion=reposteria" class="tab-link <?php echo $seccion === 'reposteria' ? 'active' : ''; ?>">Repostería</a>
-        </nav>
+  <a href="Utensilios.php?seccion=cocina+caliente" class="tab-link <?= ($seccion === 'cocina caliente') ? 'active' : '' ?>">Cocina caliente</a>
+  <a href="Utensilios.php?seccion=panaderia" class="tab-link <?= ($seccion === 'panaderia') ? 'active' : '' ?>">Panadería</a>
+  <a href="Utensilios.php?seccion=reposteria" class="tab-link <?= ($seccion === 'reposteria') ? 'active' : '' ?>">Repostería</a>
+</nav>
+
 
         <main class="content-card">
             <div class="card-header">
