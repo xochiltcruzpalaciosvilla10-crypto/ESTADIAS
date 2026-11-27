@@ -1,9 +1,15 @@
 <?php
 session_start();
+if (!isset($_SESSION['usuario']) && !isset($_SESSION['id_usuario'])) {
+    header("Location: login.php");
+    exit;
+}
+
 $conexion = new mysqli("localhost", "root", "", "utensilios");
 if ($conexion->connect_error) {
     die("Error de conexión: " . $conexion->connect_error);
 }
+
 $conexion->set_charset("utf8mb4");
 
 // Aseguramos que la columna 'seccion' exista

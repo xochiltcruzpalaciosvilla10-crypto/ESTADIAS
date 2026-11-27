@@ -1,171 +1,268 @@
 <?php
-include 'conexion.php'; // Asegúrate de que el nombre de tu conexión sea este
+$conn = new mysqli("localhost", "root", "", "insumos");
+if ($conn->connect_error) {
+    die("Error de conexión: " . $conn->connect_error);
+}
+$conn->set_charset("utf8mb4");
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nombre = $_POST['nombre'];
-    $proveedor = $_POST['proveedor'];
-    $categoria = $_POST['categoria'];
-    $existencia = intval($_POST['existencia']);
-    $stock_min = intval($_POST['stock_min']);
-    $stock_max = intval($_POST['stock_max']);
-    $precio = floatval($_POST['precio']);
+$error = "";
 
-    // Ajusta los nombres de las columnas según tu tabla en MySQL
-    $sql = "INSERT INTO insumos (nombre, proveedor, categoria, existencia, stock_min, stock_max, precio) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sssiiid", $nombre, $proveedor, $categoria, $existencia, $stock_min, $stock_max, $precio);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nombre = trim($_POST['nombre'] ?? '');
+    $categoria = $_POST['categoria'] ?? 'Secos y Harinas';
+    $unidad = $_POST['unidad'] ?? 'bultos';
+    $entrada = floatval($_POST['entrada'] ?? 0);
+    $en_uso = min($entrada, max(0, floatval($_POST['en_uso'] ?? 0)));
+    $minimo = floatval($_POST['minimo'] ?? 2);
+    $caducidad = !empty($_POST['fecha_caducidad']) ? $_POST['fecha_caducidad'] : null;
 
-    if ($stmt->execute()) {
-        header("Location: insumos.php");
-        exit();
-    } else {
-        $error = "Error al guardar: " . $conn->error;
+    if ($nombre !== '') {
+        // 1. Verificar si ya existe un insumo con el mismo nombre (sin importar mayúsculas/minúsculas)
+        $check = $conn->prepare("SELECT id FROM inventario_insumos WHERE LOWER(nombre) = LOWER(?) LIMIT 1");
+        $check->bind_param("s", $nombre);
+        $check->execute();
+        $check->store_result();
+
+        if ($check->num_rows > 0) {
+            // Ya existe: bloquear el guardado y preparar alerta
+            $error = "⚠️ El insumo «" . htmlspecialchars($nombre) . "» ya está registrado en el inventario. Si deseas sumar más cantidad, edítalo desde la lista principal.";
+            $check->close();
+        } else {
+            // No existe: guardar normalmente
+            $check->close();
+            $stmt = $conn->prepare("INSERT INTO inventario_insumos (nombre, categoria, unidad, entrada, en_uso, minimo, fecha_caducidad) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssddds", $nombre, $categoria, $unidad, $entrada, $en_uso, $minimo, $caducidad);
+            $stmt->execute();
+            $stmt->close();
+
+            header("Location: insumos.php");
+            exit;
+        }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuevo Insumo | BakeStock</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrar Nuevo Insumo | BakeStock</title>
+  <link rel="stylesheet" href="nuevo_insumo.css">
     <style>
-        img {
-  max-width: 100%;
-  height: auto;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
-        body {
-            background-color: #8c7560;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            color: #3e2723;
-        }
-        .header-bar {
-            background-color: #fcf8f2;
-            max-width: 1100px;
-            margin: 0 auto 30px auto;
-            padding: 15px 25px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-        }
-        .header-bar h2 { margin: 0; font-size: 20px; color: #3e2723; }
-        .btn-volver {
-            background-color: #d99b52;
-            color: #3e2723;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        .card-form {
-            background-color: #ffffff;
-            max-width: 450px;
-            margin: 0 auto;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-        }
-        .form-group { margin-bottom: 15px; }
-        .form-group label {
-            display: block;
-            font-weight: bold;
-            font-size: 13px;
-            margin-bottom: 5px;
-            color: #4a3525;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #e0d6cc;
-            background-color: #faf6f2;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        .row-2 {
-            display: flex;
-            gap: 10px;
-        }
-        .row-2 .form-group { flex: 1; }
-        .btn-guardar {
-            width: 100%;
-            background-color: #4a2c11;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .btn-guardar:hover { background-color: #361f0b; }
-    </style>
+
+body {
+  background-color: #937f6c !important; /* Fondo café claro / taupe exacto */
+  color: #362215;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1rem;
+}
+
+/* BARRA SUPERIOR CREMA */
+.top-bar {
+  background-color: #faf6f0;
+  width: 100%;
+  max-width: 1120px;
+  padding: 0.9rem 1.75rem;
+  border-radius: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  margin-bottom: 1.75rem;
+}
+
+.top-left {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #42210b;
+}
+
+.top-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #362215;
+}
+
+.btn-volver {
+  background-color: #d69449; /* Botón miel / caramelo exacto */
+  color: #2b1a0f;
+  text-decoration: none;
+  padding: 0.5rem 1.1rem;
+  border-radius: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.btn-volver:hover {
+  background-color: #c28036;
+}
+
+/* CONTENEDOR Y TARJETA BLANCA CENTRAL */
+.form-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.form-card {
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 440px; /* Ancho vertical esbelto igual que anadir.php */
+  padding: 2rem 2.25rem;
+  border-radius: 0.85rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+}
+
+.form-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.campo label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #362215;
+  margin-bottom: 0.35rem;
+}
+
+.campo input,
+.campo select {
+  width: 100%;
+  background-color: #faf8f5;
+  border: 1px solid #e5ddd5;
+  border-radius: 0.45rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  color: #362215;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.campo input:focus,
+.campo select:focus {
+  border-color: #937f6c;
+  background-color: #ffffff;
+}
+
+/* BOTÓN ANCHO CAFÉ CHOCOLATE OSCURO */
+.btn-guardar {
+  width: 100%;
+  background-color: #42210b;
+  color: #ffffff;
+  border: none;
+  padding: 0.8rem 1rem;
+  border-radius: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.2s;
+}
+
+.btn-guardar:hover {
+  background-color: #2b1507;
+}
+
+/* RESPONSIVO PARA CELULAR */
+@media (max-width: 550px) {
+  .top-bar {
+    flex-direction: column;
+    text-align: center;
+    padding: 1rem;
+  }
+  .form-card {
+    padding: 1.5rem 1.25rem;
+  }
+}
+
+
+  </style>
 </head>
 <body>
 
-    <div class="header-bar">
-        <span><strong>Añadir</strong></span>
-        <h2>Agregar Nuevo Insumo</h2>
-        <a href="insumos.php" class="btn-volver">← Cancelar y regresar</a>
+  <!-- BARRA SUPERIOR FLOTANTE -->
+  <header class="top-bar">
+    <span class="top-left">Añadir</span>
+    <h1 class="top-title">Registrar Nuevo Insumo</h1>
+    <a href="insumos.php" class="btn-volver">← Cancelar y regresar</a>
+  </header>
+
+  <!-- TARJETA BLANCA CENTRAL -->
+  <main class="form-wrapper">
+        <div class="form-card">
+      <?php if ($error !== ""): ?>
+        <div style="background:#fee2e2; border:1.5px solid #ef4444; color:#991b1b; padding:0.75rem 1rem; border-radius:0.5rem; margin-bottom:1.1rem; font-size:0.83rem; font-weight:600; line-height:1.4;">
+          <?= $error ?>
+        </div>
+      <?php endif; ?>
+
+      <form method="POST" action="nuevo_insumo.php" class="form-vertical" autocomplete="off">
+  
+  <div class="campo">
+    <label for="nombre">Nombre del insumo:</label>
+    <input type="text" id="nombre" name="nombre" placeholder="Ej. Azúcar estándar" autocomplete="off" required autofocus>
+  </div>
+
+
+        <div class="campo">
+          <label for="categoria">Categoría:</label>
+          <select id="categoria" name="categoria">
+            <option value="Secos y Harinas">Secos y Harinas</option>
+            <option value="Lácteos y Refrigerados">Lácteos y Refrigerados</option>
+            <option value="Rellenos y Decoración">Rellenos y Decoración</option>
+            <option value="Empaques">Empaques</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="unidad">Unidad de medida:</label>
+          <select id="unidad" name="unidad">
+            <option value="bultos">Bultos</option>
+            <option value="kg">Kilogramos (kg)</option>
+            <option value="L">Litros (L)</option>
+            <option value="pzas">Piezas / Huevos</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="entrada">Entrada:</label>
+          <input type="number" id="entrada" name="entrada" value="1" step="0.01" min="0" required>
+        </div>
+
+        <div class="campo">
+          <label for="en_uso">En uso:</label>
+          <input type="number" id="en_uso" name="en_uso" value="0" step="0.01" min="0" required>
+        </div>
+
+        <div class="campo">
+          <label for="minimo">Stock mínimo (alerta):</label>
+          <input type="number" id="minimo" name="minimo" value="2" step="0.01" min="0" required>
+        </div>
+
+        <div class="campo">
+          <label for="fecha_caducidad">Fecha de caducidad:</label>
+          <input type="date" id="fecha_caducidad" name="fecha_caducidad">
+        </div>
+
+        <button type="submit" class="btn-guardar">Guardar Insumo</button>
+      </form>
     </div>
-
-    <div class="card-form">
-        <?php if(isset($error)) echo "<p style='color:red;'>$error</p>"; ?>
-        
-        <form method="POST" action="">
-            <div class="form-group">
-                <label>Nombre del insumo:</label>
-                <input type="text" name="nombre" placeholder="Ej. Harina de trigo bulto 44kg" required>
-            </div>
-
-            <div class="form-group">
-                <label>Proveedor:</label>
-                <input type="text" name="proveedor" placeholder="Ej. Molinos La Fama" required>
-            </div>
-
-            <div class="form-group">
-                <label>Categoría:</label>
-                <select name="categoria" required>
-                    <option value="Harinas y Polvos">Harinas y Polvos</option>
-                    <option value="Lácteos y Huevos">Lácteos y Huevos</option>
-                    <option value="Azúcares y Endulzantes">Azúcares y Endulzantes</option>
-                    <option value="Grasas y Aceites">Grasas y Aceites</option>
-                    <option value="Otros">Otros</option>
-                </select>
-            </div>
-
-            <div class="row-2">
-                <div class="form-group">
-                    <label>Existencia actual:</label>
-                    <input type="number" name="existencia" value="0" min="0" required>
-                </div>
-                <div class="form-group">
-                    <label>Costo unitario ($):</label>
-                    <input type="number" step="0.01" name="precio" placeholder="0.00" required>
-                </div>
-            </div>
-
-            <div class="row-2">
-                <div class="form-group">
-                    <label>Stock Mínimo (Reorden):</label>
-                    <input type="number" name="stock_min" value="5" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label>Stock Máximo:</label>
-                    <input type="number" name="stock_max" value="20" min="1" required>
-                </div>
-            </div>
-
-            <button type="submit" class="btn-guardar">💾 Guardar insumo</button>
-        </form>
-    </div>
+  </main>
 
 </body>
 </html>
+

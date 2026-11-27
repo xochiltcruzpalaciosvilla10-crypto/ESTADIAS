@@ -268,9 +268,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
-        <form method="POST">
+        <form method="POST" autocomplete="off">
+  
             <label>Nombre del artículo:</label>
-            <input type="text" name="nombre_articulo" value="<?php echo htmlspecialchars($nombre_previo); ?>" placeholder="Ej. Batidor de globo" required>
+            <input type="text" id="nombre" name="nombre" placeholder="Ej. Azúcar estándar" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" required>
 
             <label>Entrada:</label>
             <input type="number" name="cantidad_ideal" min="1" value="<?php echo $total_previo; ?>" required>
